@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>障碍物分布和鱼线力效果测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 280px;
+            z-index: 100;
+        }
+
+        .obstacle-layer {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .surface-layer {
+            border-left: 4px solid #87CEEB;
+        }
+
+        .mid-upper-layer {
+            border-left: 4px solid #4682B4;
+        }
+
+        .mid-layer {
+            border-left: 4px solid #191970;
+        }
+
+        .deep-layer {
+            border-left: 4px solid #000080;
+        }
+
+        .test-info {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            width: 250px;
+            z-index: 100;
+        }
+
+        .force-info {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .high-tension {
+            border-left: 4px solid #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+        }
+
+        .medium-tension {
+            border-left: 4px solid #ff9800;
+            background: rgba(255, 152, 0, 0.2);
+        }
+
+        .low-tension {
+            border-left: 4px solid #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🌊 障碍物分布和鱼线力效果测试</h3>
+            <p><strong>新功能特点：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 障碍物分层分布（越深越多）</li>
+                <li>✅ 增强鱼线连接双方力效果</li>
+                <li>✅ 更强的拉拽和反作用力</li>
+                <li>✅ 快速游动增加额外张力</li>
+                <li>✅ 疲劳鱼类更易拖拽</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="shootDeepFish()">射击深层鱼类</button>
+                <button class="test-button" onclick="testPullForce()">测试拉拽力</button>
+                <button class="test-button" onclick="showObstacleInfo()">显示障碍物信息</button>
+                <button class="test-button" onclick="toggleCollisionBoxes()">切换碰撞框</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>分层分布：</strong></div>
+                <div>水面层(10-25%): 3个障碍物</div>
+                <div>中上层(25-50%): 6个障碍物</div>
+                <div>中层(50-70%): 8个障碍物</div>
+                <div>深层(70-90%): 12个障碍物</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 障碍物分布统计</h4>
+            <div id="obstacleStats">
+                <!-- 障碍物统计将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="test-info" id="testInfo">
+            <h4>⚡ 鱼线力效果监控</h4>
+            <div id="forceInfo">
+                <div class="force-info">等待鱼线连接...</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试方法：</strong> 射击深层鱼类观察障碍物分布 → 拉拽鱼线感受增强的力效果
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let showingObstacleInfo = false;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = false;
+                    console.log('障碍物分布和鱼线力效果测试模式启动');
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                    updateObstacleStats();
+                }
+            }, 2000);
+        });
+
+        // 射击深层鱼类
+        function shootDeepFish() {
+            if (!game || !game.fishes) return;
+            
+            // 找到最深层的鱼
+            let deepestFish = null;
+            let maxDepth = 0;
+            
+            game.fishes.forEach(fish => {
+                if (!fish.isCaught && fish.y > maxDepth) {
+                    maxDepth = fish.y;
+                    deepestFish = fish;
+                }
+            });
+            
+            if (deepestFish) {
+                // 射击这条鱼
+                const dx = deepestFish.x - game.player.x;
+                const dy = deepestFish.y - game.player.y;
+                
+                game.input.mouse.x = game.player.x + dx;
+                game.input.mouse.y = game.player.y + dy;
+                
+                game.handleShoot();
+                console.log(`射击深层${deepestFish.type}鱼，深度: ${Math.round((deepestFish.y / game.gameHeight) * 100)}%`);
+            }
+        }
+
+        // 测试拉拽力
+        function testPullForce() {
+            if (!game || !game.fishingLine) {
+                alert('请先射击鱼类建立连接');
+                return;
+            }
+            
+            // 模拟持续拉拽3秒
+            game.input.keys['Space'] = true;
+            setTimeout(() => {
+                game.input.keys['Space'] = false;
+                console.log('拉拽力测试完成');
+            }, 3000);
+            
+            console.log('开始3秒拉拽力测试');
+        }
+
+        // 显示障碍物信息
+        function showObstacleInfo() {
+            showingObstacleInfo = !showingObstacleInfo;
+            game.settings.showCollisionBoxes = showingObstacleInfo;
+            console.log(`障碍物信息显示: ${showingObstacleInfo ? '开启' : '关闭'}`);
+        }
+
+        // 切换碰撞框显示
+        function toggleCollisionBoxes() {
+            game.settings.showCollisionBoxes = !game.settings.showCollisionBoxes;
+            console.log(`碰撞框显示: ${game.settings.showCollisionBoxes ? '开启' : '关闭'}`);
+        }
+
+        // 更新障碍物统计
+        function updateObstacleStats() {
+            if (!game || !game.obstacles) return;
+            
+            const statsDiv = document.getElementById('obstacleStats');
+            
+            // 按深度分层统计
+            const layers = {
+                surface: { name: '水面层(10-25%)', count: 0, obstacles: [] },
+                midUpper: { name: '中上层(25-50%)', count: 0, obstacles: [] },
+                mid: { name: '中层(50-70%)', count: 0, obstacles: [] },
+                deep: { name: '深层(70-90%)', count: 0, obstacles: [] }
+            };
+            
+            game.obstacles.forEach((obstacle, index) => {
+                const depthPercent = obstacle.y / game.gameHeight;
+                
+                if (depthPercent <= 0.25) {
+                    layers.surface.count++;
+                    layers.surface.obstacles.push(obstacle);
+                } else if (depthPercent <= 0.5) {
+                    layers.midUpper.count++;
+                    layers.midUpper.obstacles.push(obstacle);
+                } else if (depthPercent <= 0.7) {
+                    layers.mid.count++;
+                    layers.mid.obstacles.push(obstacle);
+                } else {
+                    layers.deep.count++;
+                    layers.deep.obstacles.push(obstacle);
+                }
+            });
+            
+            statsDiv.innerHTML = '';
+            
+            Object.keys(layers).forEach(key => {
+                const layer = layers[key];
+                const layerDiv = document.createElement('div');
+                layerDiv.className = `obstacle-layer ${key}-layer`;
+                
+                layerDiv.innerHTML = `
+                    <div><strong>${layer.name}</strong></div>
+                    <div>数量: ${layer.count}</div>
+                    <div>类型: ${layer.obstacles.map(o => o.obstacleType).join(', ')}</div>
+                `;
+                
+                statsDiv.appendChild(layerDiv);
+            });
+        }
+
+        // 更新力效果监控
+        function updateStatus() {
+            if (!game) return;
+            
+            const forceInfoDiv = document.getElementById('forceInfo');
+            
+            if (game.fishingLine && !game.fishingLine.broken) {
+                const tension = game.fishingLine.tension;
+                const fish = game.fishingLine.fish;
+                const player = game.player;
+                
+                let tensionClass = 'low-tension';
+                if (tension > 0.7) {
+                    tensionClass = 'high-tension';
+                } else if (tension > 0.4) {
+                    tensionClass = 'medium-tension';
+                }
+                
+                forceInfoDiv.innerHTML = `
+                    <div class="force-info ${tensionClass}">
+                        <div><strong>🎣 鱼线连接状态</strong></div>
+                        <div>张力: ${Math.round(tension * 100)}%</div>
+                        <div>长度: ${Math.round(game.fishingLine.currentLength)}px</div>
+                        <div>耐久: ${Math.round((game.fishingLine.durability / game.fishingLine.maxDurability) * 100)}%</div>
+                    </div>
+                    <div class="force-info">
+                        <div><strong>🐟 鱼类状态</strong></div>
+                        <div>类型: ${fish.type}鱼</div>
+                        <div>体力: ${Math.round(fish.stamina)}/${fish.maxStamina}</div>
+                        <div>快速游动: ${fish.isFastSwimming ? '是' : '否'}</div>
+                        <div>疲劳: ${fish.isExhausted ? '是' : '否'}</div>
+                    </div>
+                    <div class="force-info">
+                        <div><strong>🎯 玩家状态</strong></div>
+                        <div>体力: ${Math.round(player.stamina)}/${player.maxStamina}</div>
+                        <div>拉拽中: ${player.isPulling ? '是' : '否'}</div>
+                        <div>速度: ${Math.round(Math.sqrt(player.vx * player.vx + player.vy * player.vy) * 10) / 10}</div>
+                    </div>
+                `;
+            } else {
+                forceInfoDiv.innerHTML = '<div class="force-info">等待鱼线连接...</div>';
+            }
+            
+            // 继续更新
+            setTimeout(updateStatus, 200);
+        }
+    </script>
+</body>
+</html>

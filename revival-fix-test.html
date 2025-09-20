@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>复活系统修复测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .danger-button {
+            background: rgba(244, 67, 54, 0.8);
+            border: 2px solid rgba(244, 67, 54, 1);
+        }
+
+        .danger-button:hover {
+            background: rgba(244, 67, 54, 1);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 280px;
+            z-index: 100;
+        }
+
+        .status-info {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .player-info {
+            border-left: 4px solid #4a90e2;
+        }
+
+        .game-info {
+            border-left: 4px solid #ffd700;
+        }
+
+        .error-info {
+            border-left: 4px solid #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+        }
+
+        .success-info {
+            border-left: 4px solid #4caf50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🔧 复活系统修复测试</h3>
+            <p><strong>修复内容：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 修复游戏启动报错</li>
+                <li>✅ 修复复活界面卡死问题</li>
+                <li>✅ 改进错误处理机制</li>
+                <li>✅ 优化游戏循环逻辑</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="testOxygenDepletion()">快速耗尽氧气</button>
+                <button class="test-button" onclick="testRevival()">测试复活系统</button>
+                <button class="test-button danger-button" onclick="forceUnconscious()">强制昏厥</button>
+                <button class="test-button" onclick="resetPlayer()">重置玩家状态</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>测试步骤：</strong></div>
+                <div>1. 点击"快速耗尽氧气"</div>
+                <div>2. 等待昏厥界面出现</div>
+                <div>3. 点击复活按钮</div>
+                <div>4. 观察是否正常复活</div>
+                <div>5. 重复测试多次</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 系统状态监控</h4>
+            <div id="systemStatus">
+                <!-- 系统状态将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试说明：</strong> 使用测试按钮快速触发各种状态，验证复活系统的稳定性
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.player) {
+                    console.log('复活系统修复测试模式启动');
+                    
+                    // 开始状态更新循环
+                    updateSystemStatus();
+                }
+            }, 3000);
+        });
+
+        // 快速耗尽氧气
+        function testOxygenDepletion() {
+            if (!game || !game.player) return;
+            
+            // 快速消耗氧气
+            game.player.oxygen = 5;
+            console.log('氧气已设置为5，即将昏厥');
+        }
+
+        // 测试复活系统
+        function testRevival() {
+            if (!game || !game.player) return;
+            
+            // 直接触发昏厥
+            game.player.oxygen = 0;
+            game.checkPlayerStatus();
+            console.log('直接触发昏厥状态');
+        }
+
+        // 强制昏厥
+        function forceUnconscious() {
+            if (!game) return;
+            
+            game.gameState = 'unconscious';
+            game.showUnconsciousScreen();
+            console.log('强制进入昏厥状态');
+        }
+
+        // 重置玩家状态
+        function resetPlayer() {
+            if (!game || !game.player) return;
+            
+            game.player.oxygen = game.player.maxOxygen;
+            game.player.stamina = game.player.maxStamina;
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * 0.1;
+            game.player.vx = 0;
+            game.player.vy = 0;
+            game.gameState = 'playing';
+            
+            console.log('玩家状态已重置');
+        }
+
+        // 更新系统状态监控
+        function updateSystemStatus() {
+            if (!game) return;
+            
+            const statusDiv = document.getElementById('systemStatus');
+            
+            const playerStatus = game.player ? {
+                oxygen: Math.round(game.player.oxygen),
+                maxOxygen: game.player.maxOxygen,
+                stamina: Math.round(game.player.stamina),
+                position: `(${Math.round(game.player.x)}, ${Math.round(game.player.y)})`,
+                velocity: `(${Math.round(game.player.vx * 10) / 10}, ${Math.round(game.player.vy * 10) / 10})`
+            } : null;
+            
+            const gameStatus = {
+                state: game.gameState,
+                coins: game.coins,
+                imagesLoaded: game.imagesLoaded,
+                unconsciousCount: game.gameStats.unconsciousCount,
+                rescueCost: game.gameStats.totalRescueCost
+            };
+            
+            statusDiv.innerHTML = `
+                <div class="status-info player-info">
+                    <div><strong>🦸 玩家状态</strong></div>
+                    ${playerStatus ? `
+                        <div>氧气: ${playerStatus.oxygen}/${playerStatus.maxOxygen}</div>
+                        <div>体力: ${playerStatus.stamina}</div>
+                        <div>位置: ${playerStatus.position}</div>
+                        <div>速度: ${playerStatus.velocity}</div>
+                    ` : '<div>玩家未初始化</div>'}
+                </div>
+                <div class="status-info game-info">
+                    <div><strong>🎮 游戏状态</strong></div>
+                    <div>状态: ${gameStatus.state}</div>
+                    <div>金币: ${gameStatus.coins}</div>
+                    <div>图片加载: ${gameStatus.imagesLoaded ? '完成' : '加载中'}</div>
+                    <div>昏厥次数: ${gameStatus.unconsciousCount}</div>
+                    <div>救援费用: ${gameStatus.rescueCost}</div>
+                </div>
+                <div class="status-info ${game.gameState === 'unconscious' ? 'error-info' : 'success-info'}">
+                    <div><strong>🔧 系统状态</strong></div>
+                    <div>游戏循环: ${game.gameState === 'playing' ? '正常' : '暂停'}</div>
+                    <div>错误状态: ${game.gameState === 'unconscious' ? '昏厥中' : '正常'}</div>
+                    <div>复活可用: ${game.coins >= 50 ? '是' : '否'}</div>
+                </div>
+            `;
+            
+            // 继续更新
+            setTimeout(updateSystemStatus, 500);
+        }
+
+        // 监听复活事件
+        document.addEventListener('click', (event) => {
+            if (event.target.id === 'reviveButton') {
+                console.log('检测到复活按钮点击');
+                
+                // 延迟检查复活结果
+                setTimeout(() => {
+                    if (game && game.gameState === 'playing') {
+                        console.log('✅ 复活成功！游戏状态已恢复');
+                    } else {
+                        console.log('❌ 复活可能失败，游戏状态:', game ? game.gameState : 'game未定义');
+                    }
+                }, 1000);
+            }
+        });
+    </script>
+</body>
+</html>

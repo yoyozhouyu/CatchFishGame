@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单解锁测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #222;
+            color: white;
+            padding: 20px;
+        }
+        .test-panel {
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .danger {
+            background: #f44336;
+        }
+        .danger:hover {
+            background: #da190b;
+        }
+        #log {
+            background: #000;
+            padding: 10px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔓 简单解锁功能测试</h1>
+    
+    <div class="test-panel">
+        <h3>游戏状态</h3>
+        <p>当前金币: <span id="coins">加载中...</span></p>
+        <p>Zone2状态: <span id="zone2">加载中...</span></p>
+        <p>Zone3状态: <span id="zone3">加载中...</span></p>
+    </div>
+    
+    <div class="test-panel">
+        <h3>测试操作</h3>
+        <button onclick="setCoins(200)">设置200金币</button>
+        <button onclick="setCoins(150)">设置150金币</button>
+        <button onclick="setCoins(100)">设置100金币</button>
+        <button onclick="showZone2Unlock()">显示Zone2解锁界面</button>
+        <button onclick="showZone3Unlock()">显示Zone3解锁界面</button>
+        <button onclick="resetZones()" class="danger">重置水域</button>
+        <button onclick="clearLog()" class="danger">清空日志</button>
+    </div>
+    
+    <div class="test-panel">
+        <h3>调试日志</h3>
+        <div id="log">等待日志...</div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let logContent = '';
+
+        // 重写console.log来捕获日志
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLog('[LOG] ' + args.join(' '));
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLog('[ERROR] ' + args.join(' '));
+        };
+
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logContent += `[${timestamp}] ${message}\n`;
+            document.getElementById('log').textContent = logContent;
+            document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+        }
+
+        function clearLog() {
+            logContent = '';
+            document.getElementById('log').textContent = '日志已清空';
+        }
+
+        // 初始化游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('开始初始化游戏...');
+            game = new UnderwaterHuntingGame();
+            
+            setTimeout(() => {
+                if (game && game.player) {
+                    addLog('游戏初始化完成');
+                    updateStatus();
+                } else {
+                    addLog('游戏初始化失败');
+                }
+            }, 3000);
+        });
+
+        function updateStatus() {
+            if (!game) return;
+            
+            document.getElementById('coins').textContent = game.coins;
+            document.getElementById('zone2').textContent = game.waterZones.zone2.unlocked ? '已解锁' : '锁定';
+            document.getElementById('zone3').textContent = game.waterZones.zone3.unlocked ? '已解锁' : '锁定';
+            
+            setTimeout(updateStatus, 500);
+        }
+
+        function setCoins(amount) {
+            if (!game) {
+                addLog('游戏未初始化');
+                return;
+            }
+            addLog(`设置金币为: ${amount}`);
+            game.coins = amount;
+        }
+
+        function showZone2Unlock() {
+            if (!game) {
+                addLog('游戏未初始化');
+                return;
+            }
+            addLog('显示Zone2解锁界面');
+            game.showUnlockPrompt('zone2');
+        }
+
+        function showZone3Unlock() {
+            if (!game) {
+                addLog('游戏未初始化');
+                return;
+            }
+            addLog('显示Zone3解锁界面');
+            game.showUnlockPrompt('zone3');
+        }
+
+        function resetZones() {
+            if (!game) {
+                addLog('游戏未初始化');
+                return;
+            }
+            addLog('重置所有水域为锁定状态');
+            game.waterZones.zone2.unlocked = false;
+            game.waterZones.zone3.unlocked = false;
+        }
+    </script>
+</body>
+</html>

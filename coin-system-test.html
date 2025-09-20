@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>金币系统测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 200px;
+            z-index: 100;
+        }
+
+        .coin-value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        /* 拉拽按钮 */
+        .pull-button {
+            position: fixed;
+            bottom: 20px;
+            right: 120px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 193, 7, 0.8);
+            border: 3px solid rgba(255, 193, 7, 1);
+            border-radius: 50%;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            user-select: none;
+            touch-action: manipulation;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .pull-button.active {
+            background: rgba(255, 152, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        .pull-button.visible {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>💰 金币系统测试</h3>
+            <p><strong>测试功能：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 初始100金币</li>
+                <li>✅ 金币栏显示</li>
+                <li>✅ 鱼类价值系统</li>
+                <li>✅ 水面收集机制</li>
+                <li>✅ 飘字提示效果</li>
+                <li>✅ 金币粒子效果</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="autoShootAndPull()">自动射击拉拽</button>
+                <button class="test-button" onclick="addTestCoins()">测试金币+50</button>
+                <button class="test-button" onclick="resetCoins()">重置金币</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div>小鱼: <span class="coin-value">5金币</span></div>
+                <div>大鱼: <span class="coin-value">15金币</span></div>
+                <div>章鱼: <span class="coin-value">25金币</span></div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 金币统计</h4>
+            <div>当前金币: <span id="currentCoins" class="coin-value">100</span></div>
+            <div>收集次数: <span id="collectCount">0</span></div>
+            <div>总收益: <span id="totalEarned" class="coin-value">0</span></div>
+            <div>最后收集: <span id="lastCollected">-</span></div>
+        </div>
+
+        <div class="controls">
+            <strong>操作:</strong> 射击鱼类 → 拉拽到水面 → 获得金币
+        </div>
+
+        <!-- 拉拽按钮 -->
+        <div class="pull-button" id="pullButton">
+            拉拽<br>鱼线
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let collectStats = {
+            count: 0,
+            totalEarned: 0,
+            lastCollected: null
+        };
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = false;
+                    console.log('金币系统测试模式启动');
+                    console.log('初始金币:', game.coins);
+                    
+                    // 监听金币变化
+                    monitorCoinChanges();
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                }
+            }, 2000);
+        });
+
+        // 监听金币变化
+        function monitorCoinChanges() {
+            let lastCoins = game.coins;
+            
+            setInterval(() => {
+                if (game.coins !== lastCoins) {
+                    const earned = game.coins - lastCoins;
+                    if (earned > 0) {
+                        collectStats.count++;
+                        collectStats.totalEarned += earned;
+                        collectStats.lastCollected = `+${earned}金币`;
+                        console.log(`获得金币: +${earned}, 总金币: ${game.coins}`);
+                    }
+                    lastCoins = game.coins;
+                }
+            }, 100);
+        }
+
+        // 自动射击并拉拽
+        function autoShootAndPull() {
+            if (!game || !game.fishes || game.fishes.length === 0) {
+                console.log('没有鱼类可以射击');
+                return;
+            }
+            
+            // 找到最近的鱼
+            let closestFish = null;
+            let closestDistance = Infinity;
+            
+            game.fishes.forEach(fish => {
+                if (!fish.isCaught) {
+                    const dx = fish.x - game.player.x;
+                    const dy = fish.y - game.player.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        closestFish = fish;
+                    }
+                }
+            });
+            
+            if (closestFish) {
+                // 设置瞄准方向
+                const dx = closestFish.x - game.player.x;
+                const dy = closestFish.y - game.player.y;
+                
+                game.input.mouse.x = game.player.x + dx;
+                game.input.mouse.y = game.player.y + dy;
+                
+                // 射击
+                game.handleShoot();
+                
+                console.log(`自动射击目标: ${closestFish.type}鱼 (价值${closestFish.coinValue}金币)`);
+                
+                // 等待击中后自动拉拽到水面
+                setTimeout(() => {
+                    autoPullToSurface(closestFish);
+                }, 1000);
+            }
+        }
+
+        // 自动拉拽到水面
+        function autoPullToSurface(targetFish) {
+            if (!game.fishingLine || !targetFish.isCaught) return;
+            
+            const pullInterval = setInterval(() => {
+                if (!game.fishingLine || game.fishingLine.broken) {
+                    clearInterval(pullInterval);
+                    return;
+                }
+                
+                // 模拟拉拽
+                game.input.keys['Space'] = true;
+                game.player.isPulling = true;
+                
+                // 检查是否到达水面
+                if (targetFish.y < game.gameHeight * 0.15) {
+                    clearInterval(pullInterval);
+                    game.input.keys['Space'] = false;
+                    game.player.isPulling = false;
+                    console.log('鱼类已拉到水面，等待收集...');
+                }
+            }, 100);
+            
+            // 10秒后停止拉拽
+            setTimeout(() => {
+                clearInterval(pullInterval);
+                game.input.keys['Space'] = false;
+                game.player.isPulling = false;
+            }, 10000);
+        }
+
+        // 测试金币增加
+        function addTestCoins() {
+            if (!game) return;
+            
+            const testAmount = 50;
+            game.coins += testAmount;
+            
+            // 创建测试飘字
+            game.addFloatingText(
+                game.gameWidth / 2, 
+                game.gameHeight / 2, 
+                `+${testAmount}`, 
+                '#ffd700'
+            );
+            
+            console.log(`测试添加${testAmount}金币，当前总金币: ${game.coins}`);
+        }
+
+        // 重置金币
+        function resetCoins() {
+            if (!game) return;
+            
+            game.coins = 100;
+            collectStats = {
+                count: 0,
+                totalEarned: 0,
+                lastCollected: null
+            };
+            
+            console.log('金币已重置为100');
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            if (!game) return;
+            
+            // 更新金币显示
+            document.getElementById('currentCoins').textContent = game.coins;
+            document.getElementById('collectCount').textContent = collectStats.count;
+            document.getElementById('totalEarned').textContent = collectStats.totalEarned;
+            document.getElementById('lastCollected').textContent = 
+                collectStats.lastCollected || '-';
+            
+            // 继续更新
+            setTimeout(updateStatus, 100);
+        }
+    </script>
+</body>
+</html>

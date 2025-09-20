@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>解锁功能测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .danger-button {
+            background: rgba(244, 67, 54, 0.8);
+            border: 2px solid rgba(244, 67, 54, 1);
+        }
+
+        .danger-button:hover {
+            background: rgba(244, 67, 54, 1);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 280px;
+            z-index: 100;
+        }
+
+        .debug-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🔓 解锁功能测试</h3>
+            <p><strong>测试功能：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 解锁按钮点击测试</li>
+                <li>✅ 金币扣除验证</li>
+                <li>✅ 水域状态更新</li>
+                <li>✅ 事件绑定调试</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="setCoins(200)">设置200金币</button>
+                <button class="test-button" onclick="setCoins(100)">设置100金币</button>
+                <button class="test-button" onclick="triggerZone2()">触发Zone2解锁</button>
+                <button class="test-button" onclick="triggerZone3()">触发Zone3解锁</button>
+                <button class="test-button danger-button" onclick="resetZones()">重置水域</button>
+                <button class="test-button" onclick="clearDebugLog()">清空日志</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>当前金币:</strong> <span id="currentCoins">100</span></div>
+                <div><strong>Zone2状态:</strong> <span id="zone2Status">锁定</span></div>
+                <div><strong>Zone3状态:</strong> <span id="zone3Status">锁定</span></div>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <h4>🐛 调试日志</h4>
+            <div id="debugLog" class="debug-log">
+                等待调试信息...
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试说明：</strong> 设置金币后触发解锁，观察调试日志
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let debugLog = [];
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.player) {
+                    console.log('解锁功能测试模式启动');
+                    
+                    // 监听控制台日志
+                    const originalLog = console.log;
+                    console.log = function(...args) {
+                        originalLog.apply(console, args);
+                        
+                        // 添加到调试日志
+                        const message = args.join(' ');
+                        addToDebugLog(message);
+                    };
+                    
+                    // 监听错误日志
+                    const originalError = console.error;
+                    console.error = function(...args) {
+                        originalError.apply(console, args);
+                        
+                        // 添加到调试日志
+                        const message = '[ERROR] ' + args.join(' ');
+                        addToDebugLog(message);
+                    };
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                }
+            }, 3000);
+        });
+
+        // 设置金币
+        function setCoins(amount) {
+            if (!game) return;
+            
+            game.coins = amount;
+            console.log(`手动设置金币: ${amount}`);
+        }
+
+        // 触发Zone2解锁
+        function triggerZone2() {
+            if (!game) return;
+            
+            console.log('手动触发Zone2解锁界面');
+            game.showUnlockPrompt('zone2');
+        }
+
+        // 触发Zone3解锁
+        function triggerZone3() {
+            if (!game) return;
+            
+            console.log('手动触发Zone3解锁界面');
+            game.showUnlockPrompt('zone3');
+        }
+
+        // 重置水域状态
+        function resetZones() {
+            if (!game) return;
+            
+            game.waterZones.zone2.unlocked = false;
+            game.waterZones.zone3.unlocked = false;
+            console.log('重置所有水域为锁定状态');
+        }
+
+        // 添加到调试日志
+        function addToDebugLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            debugLog.push(`[${timestamp}] ${message}`);
+            
+            // 保持最多100条记录
+            if (debugLog.length > 100) {
+                debugLog.shift();
+            }
+            
+            updateDebugLogDisplay();
+        }
+
+        // 更新调试日志显示
+        function updateDebugLogDisplay() {
+            const logDiv = document.getElementById('debugLog');
+            if (debugLog.length === 0) {
+                logDiv.innerHTML = '等待调试信息...';
+            } else {
+                logDiv.innerHTML = debugLog.join('<br>');
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        }
+
+        // 清空调试日志
+        function clearDebugLog() {
+            debugLog = [];
+            updateDebugLogDisplay();
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            if (!game) return;
+            
+            document.getElementById('currentCoins').textContent = game.coins;
+            document.getElementById('zone2Status').textContent = game.waterZones.zone2.unlocked ? '已解锁' : '锁定';
+            document.getElementById('zone3Status').textContent = game.waterZones.zone3.unlocked ? '已解锁' : '锁定';
+            
+            // 继续更新
+            setTimeout(updateStatus, 100);
+        }
+    </script>
+</body>
+</html>

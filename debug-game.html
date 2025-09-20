@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>海底狩猎游戏 - 调试版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .debug-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+        }
+
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #87CEEB, #4682B4, #191970);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- 加载界面 -->
+        <div id="loadingScreen" class="loading-screen">
+            <div class="loading-spinner"></div>
+            <div>海底狩猎游戏加载中...</div>
+            <div id="loadingStatus" style="font-size: 14px; margin-top: 10px;">初始化中...</div>
+        </div>
+
+        <!-- 调试信息 -->
+        <div class="debug-info" id="debugInfo">
+            <div>状态: <span id="gameStatus">初始化</span></div>
+            <div>画布: <span id="canvasSize">未设置</span></div>
+            <div>玩家: <span id="playerInfo">未创建</span></div>
+            <div>鱼类: <span id="fishInfo">未创建</span></div>
+            <div>错误: <span id="errorInfo">无</span></div>
+        </div>
+
+        <!-- 游戏画布 -->
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        // 调试信息更新函数
+        function updateDebugInfo(key, value) {
+            const element = document.getElementById(key);
+            if (element) {
+                element.textContent = value;
+            }
+        }
+
+        function updateLoadingStatus(status) {
+            const element = document.getElementById('loadingStatus');
+            if (element) {
+                element.textContent = status;
+            }
+        }
+
+        // 错误处理
+        window.addEventListener('error', (e) => {
+            console.error('JavaScript错误:', e.error);
+            updateDebugInfo('errorInfo', e.error.message);
+            updateLoadingStatus('错误: ' + e.error.message);
+        });
+
+        // 简化版游戏类
+        class DebugGame {
+            constructor() {
+                console.log('开始初始化游戏...');
+                updateLoadingStatus('创建游戏实例...');
+                
+                this.canvas = null;
+                this.ctx = null;
+                this.gameWidth = 0;
+                this.gameHeight = 0;
+                this.gameState = 'loading';
+                
+                this.player = null;
+                this.fishes = [];
+                
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    console.log('设置画布...');
+                    updateLoadingStatus('设置画布...');
+                    this.setupCanvas();
+                    updateDebugInfo('gameStatus', '画布已设置');
+                    
+                    console.log('创建游戏对象...');
+                    updateLoadingStatus('创建游戏对象...');
+                    this.createGameObjects();
+                    updateDebugInfo('gameStatus', '对象已创建');
+                    
+                    console.log('启动游戏循环...');
+                    updateLoadingStatus('启动游戏...');
+                    
+                    // 延迟隐藏加载界面
+                    setTimeout(() => {
+                        document.getElementById('loadingScreen').style.display = 'none';
+                        this.gameState = 'playing';
+                        updateDebugInfo('gameStatus', '运行中');
+                        this.gameLoop();
+                        console.log('游戏启动成功！');
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('游戏初始化失败:', error);
+                    updateDebugInfo('errorInfo', error.message);
+                    updateLoadingStatus('初始化失败: ' + error.message);
+                }
+            }
+            
+            setupCanvas() {
+                this.canvas = document.getElementById('gameCanvas');
+                if (!this.canvas) {
+                    throw new Error('找不到游戏画布元素');
+                }
+                
+                this.ctx = this.canvas.getContext('2d');
+                if (!this.ctx) {
+                    throw new Error('无法获取2D渲染上下文');
+                }
+                
+                this.resizeCanvas();
+                console.log(`画布尺寸: ${this.gameWidth}x${this.gameHeight}`);
+                updateDebugInfo('canvasSize', `${this.gameWidth}x${this.gameHeight}`);
+            }
+            
+            resizeCanvas() {
+                const container = document.getElementById('gameContainer');
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
+                
+                // 简化的尺寸计算
+                this.gameWidth = Math.min(containerWidth * 0.9, 400);
+                this.gameHeight = Math.min(containerHeight * 0.9, 600);
+                
+                this.canvas.width = this.gameWidth;
+                this.canvas.height = this.gameHeight;
+                this.canvas.style.width = this.gameWidth + 'px';
+                this.canvas.style.height = this.gameHeight + 'px';
+            }
+            
+            createGameObjects() {
+                // 创建简化的玩家对象
+                this.player = {
+                    x: this.gameWidth / 2,
+                    y: this.gameHeight * 0.8,
+                    vx: 0,
+                    vy: 0,
+                    radius: 15
+                };
+                
+                console.log('玩家创建成功:', this.player);
+                updateDebugInfo('playerInfo', `位置: ${Math.round(this.player.x)}, ${Math.round(this.player.y)}`);
+                
+                // 创建简化的鱼类
+                this.fishes = [];
+                for (let i = 0; i < 3; i++) {
+                    this.fishes.push({
+                        x: Math.random() * (this.gameWidth - 100) + 50,
+                        y: Math.random() * (this.gameHeight * 0.7) + 50,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        radius: 10 + Math.random() * 10,
+                        color: `hsl(${Math.random() * 360}, 70%, 60%)`
+                    });
+                }
+                
+                console.log('鱼类创建成功:', this.fishes.length, '条鱼');
+                updateDebugInfo('fishInfo', `${this.fishes.length}条鱼`);
+            }
+            
+            update() {
+                // 简单的鱼类移动
+                this.fishes.forEach(fish => {
+                    fish.x += fish.vx;
+                    fish.y += fish.vy;
+                    
+                    // 边界反弹
+                    if (fish.x < fish.radius || fish.x > this.gameWidth - fish.radius) {
+                        fish.vx *= -1;
+                    }
+                    if (fish.y < fish.radius || fish.y > this.gameHeight * 0.8 - fish.radius) {
+                        fish.vy *= -1;
+                    }
+                });
+            }
+            
+            render() {
+                // 清空画布
+                this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight);
+                
+                // 绘制玩家
+                this.ctx.fillStyle = '#4a90e2';
+                this.ctx.beginPath();
+                this.ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // 绘制鱼类
+                this.fishes.forEach(fish => {
+                    this.ctx.fillStyle = fish.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(fish.x, fish.y, fish.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+                
+                // 绘制调试信息
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '14px Arial';
+                this.ctx.fillText(`FPS: ${Math.round(1000 / 16)}`, 10, this.gameHeight - 20);
+            }
+            
+            gameLoop() {
+                if (this.gameState !== 'playing') return;
+                
+                this.update();
+                this.render();
+                
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+        
+        // 启动调试游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM加载完成，启动调试游戏...');
+            try {
+                window.debugGame = new DebugGame();
+            } catch (error) {
+                console.error('创建游戏实例失败:', error);
+                updateDebugInfo('errorInfo', error.message);
+                updateLoadingStatus('创建失败: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

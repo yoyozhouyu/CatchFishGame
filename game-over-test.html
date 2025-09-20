@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>游戏失败系统测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .danger-button {
+            background: rgba(244, 67, 54, 0.8);
+            border: 2px solid rgba(244, 67, 54, 1);
+        }
+
+        .danger-button:hover {
+            background: rgba(244, 67, 54, 1);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 250px;
+            z-index: 100;
+        }
+
+        .coin-value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .danger-value {
+            color: #ff4444;
+            font-weight: bold;
+        }
+
+        .warning-value {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .success-value {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>💸 游戏失败系统测试</h3>
+            <p><strong>测试功能：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 金币为0检测</li>
+                <li>✅ 游戏结束界面</li>
+                <li>✅ 统计信息显示</li>
+                <li>✅ 重新开始功能</li>
+                <li>✅ 数据重置验证</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button danger-button" onclick="setZeroCoins()">设置0金币</button>
+                <button class="test-button" onclick="simulateGameplay()">模拟游戏过程</button>
+                <button class="test-button" onclick="addSomeStats()">增加统计数据</button>
+                <button class="test-button danger-button" onclick="triggerGameOver()">强制游戏结束</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div>触发条件: 金币 ≤ 0</div>
+                <div>统计内容: 鱼类、金币、时间、深度等</div>
+                <div>重启功能: 完全重置游戏状态</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 游戏状态监控</h4>
+            <div>当前金币: <span id="currentCoins" class="coin-value">100</span></div>
+            <div>游戏状态: <span id="gameState" class="success-value">正常</span></div>
+            <div>游戏时长: <span id="playTime">0分0秒</span></div>
+            
+            <div class="stats-grid">
+                <div>🐟 捕获: <span id="fishCaught">0</span></div>
+                <div>💰 收入: <span id="totalEarned">0</span></div>
+                <div>💔 断线: <span id="lineBreaks">0</span></div>
+                <div>💀 昏厥: <span id="unconscious">0</span></div>
+                <div>🚑 救援费: <span id="rescueCost">0</span></div>
+                <div>🏊 最大深度: <span id="maxDepth">0%</span></div>
+            </div>
+            
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
+                <div>净收益: <span id="netProfit" class="success-value">0</span></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试方法:</strong> 设置0金币 → 触发游戏结束 → 查看统计信息 → 重新开始
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let gameStartTime = Date.now();
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = false;
+                    console.log('游戏失败系统测试模式启动');
+                    gameStartTime = Date.now();
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                }
+            }, 2000);
+        });
+
+        // 设置0金币
+        function setZeroCoins() {
+            if (!game) return;
+            
+            game.coins = 0;
+            console.log('金币设置为0，等待游戏结束触发...');
+            
+            // 手动触发游戏结束检查
+            setTimeout(() => {
+                if (game.coins <= 0) {
+                    game.triggerGameOver();
+                }
+            }, 500);
+        }
+
+        // 模拟游戏过程
+        function simulateGameplay() {
+            if (!game) return;
+            
+            // 模拟一些游戏数据
+            game.gameStats.fishCaught = Math.floor(Math.random() * 20) + 5;
+            game.gameStats.totalCoinsEarned = Math.floor(Math.random() * 300) + 100;
+            game.gameStats.lineBreaks = Math.floor(Math.random() * 8) + 1;
+            game.gameStats.unconsciousCount = Math.floor(Math.random() * 3);
+            game.gameStats.totalRescueCost = game.gameStats.unconsciousCount * 30;
+            game.gameStats.maxDepthReached = Math.random() * 80 + 20;
+            
+            console.log('已模拟游戏过程，生成随机统计数据');
+        }
+
+        // 增加统计数据
+        function addSomeStats() {
+            if (!game) return;
+            
+            game.gameStats.fishCaught += 3;
+            game.gameStats.totalCoinsEarned += 45;
+            game.gameStats.lineBreaks += 1;
+            game.gameStats.maxDepthReached = Math.max(game.gameStats.maxDepthReached, 60);
+            
+            console.log('已增加一些统计数据');
+        }
+
+        // 强制触发游戏结束
+        function triggerGameOver() {
+            if (!game) return;
+            
+            game.triggerGameOver();
+            console.log('强制触发游戏结束');
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            if (!game) return;
+            
+            // 更新金币显示
+            const coinsSpan = document.getElementById('currentCoins');
+            coinsSpan.textContent = game.coins;
+            
+            if (game.coins <= 0) {
+                coinsSpan.className = 'danger-value';
+            } else if (game.coins <= 20) {
+                coinsSpan.className = 'warning-value';
+            } else {
+                coinsSpan.className = 'coin-value';
+            }
+            
+            // 更新游戏状态
+            const gameStateSpan = document.getElementById('gameState');
+            switch (game.gameState) {
+                case 'playing':
+                    gameStateSpan.textContent = '正常';
+                    gameStateSpan.className = 'success-value';
+                    break;
+                case 'unconscious':
+                    gameStateSpan.textContent = '昏厥';
+                    gameStateSpan.className = 'warning-value';
+                    break;
+                case 'gameOver':
+                    gameStateSpan.textContent = '游戏结束';
+                    gameStateSpan.className = 'danger-value';
+                    break;
+                default:
+                    gameStateSpan.textContent = game.gameState;
+                    gameStateSpan.className = 'warning-value';
+            }
+            
+            // 更新游戏时长
+            const currentTime = Date.now();
+            const playTime = currentTime - game.gameStats.startTime;
+            const minutes = Math.floor(playTime / 60000);
+            const seconds = Math.floor((playTime % 60000) / 1000);
+            document.getElementById('playTime').textContent = `${minutes}分${seconds}秒`;
+            
+            // 更新统计数据
+            document.getElementById('fishCaught').textContent = game.gameStats.fishCaught;
+            document.getElementById('totalEarned').textContent = game.gameStats.totalCoinsEarned;
+            document.getElementById('lineBreaks').textContent = game.gameStats.lineBreaks;
+            document.getElementById('unconscious').textContent = game.gameStats.unconsciousCount;
+            document.getElementById('rescueCost').textContent = game.gameStats.totalRescueCost;
+            document.getElementById('maxDepth').textContent = Math.round(game.gameStats.maxDepthReached) + '%';
+            
+            // 更新净收益
+            const netProfit = game.gameStats.totalCoinsEarned - game.gameStats.totalRescueCost;
+            const netProfitSpan = document.getElementById('netProfit');
+            netProfitSpan.textContent = netProfit;
+            
+            if (netProfit >= 0) {
+                netProfitSpan.className = 'success-value';
+            } else {
+                netProfitSpan.className = 'danger-value';
+            }
+            
+            // 继续更新
+            if (game.gameState !== 'gameOver') {
+                setTimeout(updateStatus, 100);
+            }
+        }
+    </script>
+</body>
+</html>

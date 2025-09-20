@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>氧气条和UI布局测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 250px;
+            z-index: 100;
+        }
+
+        .ui-element {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .coin-info {
+            border-left: 4px solid #FFD700;
+        }
+
+        .oxygen-info {
+            border-left: 4px solid #00bfff;
+        }
+
+        .stamina-info {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .warning-info {
+            border-left: 4px solid #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+        }
+
+        .test-info {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            width: 250px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🎮 氧气条和UI布局测试</h3>
+            <p><strong>新UI布局特点：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 金币移到左上角</li>
+                <li>✅ 氧气条在顶部中间（胶囊形状）</li>
+                <li>✅ 氧气低于20%时红色闪烁警告</li>
+                <li>✅ 氧气低于10%时显示警告文字</li>
+                <li>✅ 体力条仍跟随主角显示</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="consumeOxygen()">消耗氧气</button>
+                <button class="test-button" onclick="restoreOxygen()">恢复氧气</button>
+                <button class="test-button" onclick="testLowOxygen()">测试低氧警告</button>
+                <button class="test-button" onclick="testCriticalOxygen()">测试危险氧气</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>氧气条颜色：</strong></div>
+                <div>蓝色(>60%) → 橙色(20-60%) → 红色(<20%)</div>
+                <div><strong>警告效果：</strong></div>
+                <div>氧气<20%: 边缘红色闪烁</div>
+                <div>氧气<10%: 额外警告文字</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 UI元素状态</h4>
+            <div id="uiStats">
+                <!-- UI状态将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="test-info" id="testInfo">
+            <h4>🔍 氧气系统监控</h4>
+            <div id="oxygenInfo">
+                <div class="ui-element">等待游戏加载...</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试方法：</strong> 使用按钮测试不同氧气水平的UI效果和警告系统
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.player) {
+                    console.log('氧气条和UI布局测试模式启动');
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                    updateUIStats();
+                }
+            }, 2000);
+        });
+
+        // 消耗氧气
+        function consumeOxygen() {
+            if (!game || !game.player) return;
+            
+            game.player.oxygen = Math.max(0, game.player.oxygen - 20);
+            console.log(`消耗氧气，当前氧气: ${Math.round((game.player.oxygen / game.player.maxOxygen) * 100)}%`);
+        }
+
+        // 恢复氧气
+        function restoreOxygen() {
+            if (!game || !game.player) return;
+            
+            game.player.oxygen = game.player.maxOxygen;
+            console.log('氧气已完全恢复');
+        }
+
+        // 测试低氧警告（设置为15%）
+        function testLowOxygen() {
+            if (!game || !game.player) return;
+            
+            game.player.oxygen = game.player.maxOxygen * 0.15;
+            console.log('设置氧气为15%，测试低氧警告效果');
+        }
+
+        // 测试危险氧气（设置为5%）
+        function testCriticalOxygen() {
+            if (!game || !game.player) return;
+            
+            game.player.oxygen = game.player.maxOxygen * 0.05;
+            console.log('设置氧气为5%，测试危险氧气警告效果');
+        }
+
+        // 更新UI状态统计
+        function updateUIStats() {
+            if (!game || !game.player) return;
+            
+            const statsDiv = document.getElementById('uiStats');
+            
+            const oxygenPercent = (game.player.oxygen / game.player.maxOxygen) * 100;
+            const staminaPercent = (game.player.stamina / game.player.maxStamina) * 100;
+            
+            let oxygenColor = 'blue';
+            if (oxygenPercent <= 20) oxygenColor = 'red';
+            else if (oxygenPercent <= 60) oxygenColor = 'orange';
+            
+            let warningStatus = '无警告';
+            if (oxygenPercent <= 10) warningStatus = '危险警告（闪烁+文字）';
+            else if (oxygenPercent <= 20) warningStatus = '低氧警告（边缘闪烁）';
+            
+            statsDiv.innerHTML = `
+                <div class="ui-element coin-info">
+                    <div><strong>💰 金币栏</strong></div>
+                    <div>位置: 左上角 (20, 20)</div>
+                    <div>金币数量: ${game.coins}</div>
+                </div>
+                <div class="ui-element oxygen-info">
+                    <div><strong>🫁 氧气条</strong></div>
+                    <div>位置: 顶部中间</div>
+                    <div>氧气量: ${Math.round(oxygenPercent)}%</div>
+                    <div>颜色: ${oxygenColor}</div>
+                </div>
+                <div class="ui-element stamina-info">
+                    <div><strong>⚡ 体力条</strong></div>
+                    <div>位置: 跟随主角</div>
+                    <div>体力量: ${Math.round(staminaPercent)}%</div>
+                    <div>显示: ${staminaPercent < 100 ? '显示' : '隐藏'}</div>
+                </div>
+                <div class="ui-element ${oxygenPercent <= 20 ? 'warning-info' : ''}">
+                    <div><strong>⚠️ 警告系统</strong></div>
+                    <div>状态: ${warningStatus}</div>
+                    <div>闪烁速度: ${oxygenPercent <= 10 ? '快速' : oxygenPercent <= 20 ? '正常' : '无'}</div>
+                </div>
+            `;
+            
+            // 继续更新
+            setTimeout(updateUIStats, 500);
+        }
+
+        // 更新氧气系统监控
+        function updateStatus() {
+            if (!game || !game.player) return;
+            
+            const oxygenInfoDiv = document.getElementById('oxygenInfo');
+            
+            const oxygenPercent = (game.player.oxygen / game.player.maxOxygen) * 100;
+            const time = Date.now() / 1000;
+            const flashSpeed = oxygenPercent < 10 ? 8 : 4;
+            const flashIntensity = (Math.sin(time * flashSpeed) + 1) / 2;
+            const warningIntensity = oxygenPercent <= 20 ? (20 - oxygenPercent) / 20 : 0;
+            
+            oxygenInfoDiv.innerHTML = `
+                <div class="ui-element oxygen-info">
+                    <div><strong>🫁 氧气详情</strong></div>
+                    <div>当前氧气: ${Math.round(game.player.oxygen)}/${game.player.maxOxygen}</div>
+                    <div>百分比: ${Math.round(oxygenPercent)}%</div>
+                    <div>消耗速度: ${game.player.oxygenConsumption}/帧</div>
+                </div>
+                <div class="ui-element ${oxygenPercent <= 20 ? 'warning-info' : ''}">
+                    <div><strong>⚠️ 警告系统详情</strong></div>
+                    <div>警告强度: ${Math.round(warningIntensity * 100)}%</div>
+                    <div>闪烁强度: ${Math.round(flashIntensity * 100)}%</div>
+                    <div>闪烁速度: ${flashSpeed}Hz</div>
+                    <div>边缘透明度: ${Math.round(flashIntensity * warningIntensity * 30)}%</div>
+                </div>
+                <div class="ui-element">
+                    <div><strong>🎮 玩家状态</strong></div>
+                    <div>位置: (${Math.round(game.player.x)}, ${Math.round(game.player.y)})</div>
+                    <div>深度: ${Math.round((game.player.y / game.gameHeight) * 100)}%</div>
+                    <div>在水面: ${game.player.isAtSurface ? '是' : '否'}</div>
+                </div>
+            `;
+            
+            // 继续更新
+            setTimeout(updateStatus, 200);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>音乐系统测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .music-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 250px;
+            z-index: 100;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .volume-slider {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .volume-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .music-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .music-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .music-button.muted {
+            background: rgba(244, 67, 54, 0.8);
+            border-color: rgba(244, 67, 54, 1);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.playing {
+            background: #4CAF50;
+            animation: pulse 1s infinite;
+        }
+
+        .status-indicator.paused {
+            background: #ff9800;
+        }
+
+        .status-indicator.error {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🎵 音乐系统测试</h3>
+            <p><strong>测试功能：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 背景音乐自动播放</li>
+                <li>✅ 音量控制滑块</li>
+                <li>✅ 静音切换功能</li>
+                <li>✅ 循环播放机制</li>
+                <li>✅ 用户交互启动</li>
+                <li>✅ 错误处理机制</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="testPlayMusic()">播放音乐</button>
+                <button class="test-button" onclick="testPauseMusic()">暂停音乐</button>
+                <button class="test-button" onclick="testVolumeChange()">测试音量</button>
+                <button class="test-button" onclick="testMuteToggle()">切换静音</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div>音频文件: haidi_bgm.mp3</div>
+                <div>播放模式: 循环播放</div>
+                <div>启动方式: 用户交互后自动播放</div>
+            </div>
+        </div>
+
+        <div class="music-controls">
+            <h4>🎵 音乐控制面板</h4>
+            
+            <div style="margin: 10px 0;">
+                <div>播放状态: <span class="status-indicator" id="statusIndicator"></span><span id="playStatus">未知</span></div>
+                <div>当前音量: <span id="currentVolume">30%</span></div>
+                <div>静音状态: <span id="muteStatus">关闭</span></div>
+            </div>
+            
+            <div class="volume-control">
+                <span>🔊</span>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="30">
+                <span id="volumePercent">30%</span>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <button class="music-button" id="muteButton">🔊 取消静音</button>
+                <button class="music-button" id="playPauseButton">▶️ 播放</button>
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>使用说明:</strong> 点击任意位置启动音乐 → 使用控制面板调节音量和静音
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = false;
+                    console.log('音乐系统测试模式启动');
+                    
+                    // 设置音乐控制
+                    setupMusicControls();
+                    
+                    // 开始状态更新循环
+                    updateMusicStatus();
+                }
+            }, 2000);
+        });
+
+        // 设置音乐控制
+        function setupMusicControls() {
+            const muteButton = document.getElementById('muteButton');
+            const playPauseButton = document.getElementById('playPauseButton');
+            const volumeSlider = document.getElementById('volumeSlider');
+
+            // 静音按钮
+            muteButton.addEventListener('click', () => {
+                const isMuted = game.toggleMute();
+                updateMuteButton(isMuted);
+            });
+
+            // 播放/暂停按钮
+            playPauseButton.addEventListener('click', () => {
+                if (game.audio.isPlaying) {
+                    game.pauseBackgroundMusic();
+                } else {
+                    game.playBackgroundMusic();
+                }
+            });
+
+            // 音量滑块
+            volumeSlider.addEventListener('input', (e) => {
+                const volume = e.target.value / 100;
+                game.setMusicVolume(volume);
+                document.getElementById('volumePercent').textContent = e.target.value + '%';
+                document.getElementById('currentVolume').textContent = e.target.value + '%';
+            });
+        }
+
+        // 更新静音按钮
+        function updateMuteButton(isMuted) {
+            const muteButton = document.getElementById('muteButton');
+            muteButton.textContent = isMuted ? '🔇 开启静音' : '🔊 取消静音';
+            muteButton.classList.toggle('muted', isMuted);
+        }
+
+        // 测试播放音乐
+        function testPlayMusic() {
+            game.playBackgroundMusic();
+            console.log('测试播放音乐');
+        }
+
+        // 测试暂停音乐
+        function testPauseMusic() {
+            game.pauseBackgroundMusic();
+            console.log('测试暂停音乐');
+        }
+
+        // 测试音量变化
+        function testVolumeChange() {
+            const volumes = [0.1, 0.3, 0.5, 0.7, 1.0];
+            let index = 0;
+            
+            const changeVolume = () => {
+                if (index < volumes.length) {
+                    game.setMusicVolume(volumes[index]);
+                    document.getElementById('volumeSlider').value = volumes[index] * 100;
+                    document.getElementById('volumePercent').textContent = Math.round(volumes[index] * 100) + '%';
+                    document.getElementById('currentVolume').textContent = Math.round(volumes[index] * 100) + '%';
+                    console.log('测试音量:', volumes[index]);
+                    index++;
+                    setTimeout(changeVolume, 1000);
+                }
+            };
+            
+            changeVolume();
+        }
+
+        // 测试静音切换
+        function testMuteToggle() {
+            const isMuted = game.toggleMute();
+            updateMuteButton(isMuted);
+            console.log('测试静音切换:', isMuted ? '开启' : '关闭');
+        }
+
+        // 更新音乐状态显示
+        function updateMusicStatus() {
+            if (!game) return;
+            
+            const statusIndicator = document.getElementById('statusIndicator');
+            const playStatus = document.getElementById('playStatus');
+            const muteStatus = document.getElementById('muteStatus');
+            const playPauseButton = document.getElementById('playPauseButton');
+            
+            // 更新播放状态
+            if (game.audio.bgm) {
+                if (game.audio.isPlaying) {
+                    statusIndicator.className = 'status-indicator playing';
+                    playStatus.textContent = '播放中';
+                    playPauseButton.textContent = '⏸️ 暂停';
+                } else {
+                    statusIndicator.className = 'status-indicator paused';
+                    playStatus.textContent = '已暂停';
+                    playPauseButton.textContent = '▶️ 播放';
+                }
+            } else {
+                statusIndicator.className = 'status-indicator error';
+                playStatus.textContent = '加载失败';
+                playPauseButton.textContent = '❌ 错误';
+            }
+            
+            // 更新静音状态
+            muteStatus.textContent = game.audio.isMuted ? '开启' : '关闭';
+            
+            // 继续更新
+            setTimeout(updateMusicStatus, 100);
+        }
+    </script>
+</body>
+</html>

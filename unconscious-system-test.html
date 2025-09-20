@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>昏厥系统测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .danger-button {
+            background: rgba(244, 67, 54, 0.8);
+            border: 2px solid rgba(244, 67, 54, 1);
+        }
+
+        .danger-button:hover {
+            background: rgba(244, 67, 54, 1);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 200px;
+            z-index: 100;
+        }
+
+        .coin-value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .oxygen-value {
+            color: #00bcd4;
+            font-weight: bold;
+        }
+
+        .danger-value {
+            color: #ff4444;
+            font-weight: bold;
+        }
+
+        .warning-value {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .success-value {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>💀 昏厥系统测试</h3>
+            <p><strong>测试功能：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 氧气耗尽检测</li>
+                <li>✅ 昏厥界面弹出</li>
+                <li>✅ 救援费用计算</li>
+                <li>✅ 水面复活机制</li>
+                <li>✅ 资源完全恢复</li>
+                <li>✅ 扣费飘字提醒</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button danger-button" onclick="drainOxygen()">耗尽氧气</button>
+                <button class="test-button" onclick="setLowOxygen()">设置低氧气</button>
+                <button class="test-button" onclick="goDeepWater()">潜入深水</button>
+                <button class="test-button" onclick="setHighCoins()">设置高金币</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div>救援费用: 金币的20% (20-50金币)</div>
+                <div>复活位置: 水面附近</div>
+                <div>资源恢复: 氧气和体力完全恢复</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 生存状态监控</h4>
+            <div>当前金币: <span id="currentCoins" class="coin-value">100</span></div>
+            <div>氧气值: <span id="oxygenLevel" class="oxygen-value">100</span></div>
+            <div>体力值: <span id="staminaLevel" class="success-value">100</span></div>
+            <div>玩家深度: <span id="playerDepth">-</span></div>
+            <div>游戏状态: <span id="gameState" class="success-value">正常</span></div>
+            <div>昏厥次数: <span id="unconsciousCount">0</span></div>
+            <div>总救援费: <span id="totalRescueCost" class="danger-value">0</span></div>
+        </div>
+
+        <div class="controls">
+            <strong>测试方法:</strong> 潜入深水耗尽氧气 → 触发昏厥 → 支付救援费用 → 水面复活
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let unconsciousStats = {
+            count: 0,
+            totalCost: 0
+        };
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = false;
+                    console.log('昏厥系统测试模式启动');
+                    
+                    // 监听昏厥事件
+                    monitorUnconsciousEvents();
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                }
+            }, 2000);
+        });
+
+        // 监听昏厥事件
+        function monitorUnconsciousEvents() {
+            let lastCoins = game.coins;
+            let lastGameState = game.gameState;
+            
+            setInterval(() => {
+                // 检测游戏状态变化
+                if (game.gameState !== lastGameState) {
+                    if (game.gameState === 'unconscious') {
+                        console.log('检测到昏厥状态');
+                    } else if (lastGameState === 'unconscious' && game.gameState === 'playing') {
+                        console.log('检测到复活');
+                        unconsciousStats.count++;
+                    }
+                    lastGameState = game.gameState;
+                }
+                
+                // 检测金币减少（可能是救援费用）
+                if (game.coins < lastCoins) {
+                    const cost = lastCoins - game.coins;
+                    if (cost >= 20 && cost <= 50) {
+                        unconsciousStats.totalCost += cost;
+                        console.log(`支付救援费用: ${cost}金币`);
+                    }
+                }
+                lastCoins = game.coins;
+            }, 100);
+        }
+
+        // 耗尽氧气
+        function drainOxygen() {
+            if (!game || !game.player) return;
+            
+            game.player.oxygen = 0;
+            console.log('氧气已耗尽，等待昏厥触发...');
+        }
+
+        // 设置低氧气
+        function setLowOxygen() {
+            if (!game || !game.player) return;
+            
+            game.player.oxygen = 5;
+            console.log('氧气设置为5，即将耗尽...');
+        }
+
+        // 潜入深水
+        function goDeepWater() {
+            if (!game || !game.player) return;
+            
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * 0.8; // 深水区域
+            game.player.vx = 0;
+            game.player.vy = 0;
+            console.log('传送到深水区域，氧气将快速消耗...');
+        }
+
+        // 设置高金币
+        function setHighCoins() {
+            if (!game) return;
+            
+            game.coins = 300;
+            console.log('金币设置为300，测试高救援费用...');
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            if (!game) return;
+            
+            // 更新金币显示
+            document.getElementById('currentCoins').textContent = game.coins;
+            
+            // 更新氧气显示
+            const oxygenSpan = document.getElementById('oxygenLevel');
+            const oxygenPercent = Math.round((game.player.oxygen / game.player.maxOxygen) * 100);
+            oxygenSpan.textContent = oxygenPercent + '%';
+            
+            if (oxygenPercent <= 0) {
+                oxygenSpan.className = 'danger-value';
+            } else if (oxygenPercent <= 20) {
+                oxygenSpan.className = 'warning-value';
+            } else {
+                oxygenSpan.className = 'oxygen-value';
+            }
+            
+            // 更新体力显示
+            const staminaSpan = document.getElementById('staminaLevel');
+            const staminaPercent = Math.round((game.player.stamina / game.player.maxStamina) * 100);
+            staminaSpan.textContent = staminaPercent + '%';
+            
+            if (staminaPercent <= 20) {
+                staminaSpan.className = 'warning-value';
+            } else {
+                staminaSpan.className = 'success-value';
+            }
+            
+            // 更新玩家深度
+            const depthPercent = Math.round((game.player.y / game.gameHeight) * 100);
+            const depthSpan = document.getElementById('playerDepth');
+            depthSpan.textContent = depthPercent + '%';
+            
+            if (depthPercent < 20) {
+                depthSpan.className = 'success-value';
+                depthSpan.textContent += ' (水面)';
+            } else if (depthPercent < 50) {
+                depthSpan.className = 'warning-value';
+                depthSpan.textContent += ' (浅水)';
+            } else {
+                depthSpan.className = 'danger-value';
+                depthSpan.textContent += ' (深水)';
+            }
+            
+            // 更新游戏状态
+            const gameStateSpan = document.getElementById('gameState');
+            switch (game.gameState) {
+                case 'playing':
+                    gameStateSpan.textContent = '正常';
+                    gameStateSpan.className = 'success-value';
+                    break;
+                case 'unconscious':
+                    gameStateSpan.textContent = '昏厥';
+                    gameStateSpan.className = 'danger-value';
+                    break;
+                default:
+                    gameStateSpan.textContent = game.gameState;
+                    gameStateSpan.className = 'warning-value';
+            }
+            
+            // 更新昏厥统计
+            document.getElementById('unconsciousCount').textContent = unconsciousStats.count;
+            document.getElementById('totalRescueCost').textContent = unconsciousStats.totalCost;
+            
+            // 继续更新
+            setTimeout(updateStatus, 100);
+        }
+    </script>
+</body>
+</html>

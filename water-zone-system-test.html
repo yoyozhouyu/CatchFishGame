@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>水域分层系统测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .unlock-button {
+            background: rgba(255, 193, 7, 0.8);
+            border: 2px solid rgba(255, 193, 7, 1);
+        }
+
+        .unlock-button:hover {
+            background: rgba(255, 193, 7, 1);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 280px;
+            z-index: 100;
+        }
+
+        .zone-info {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .zone1-info {
+            border-left: 4px solid #4a90e2;
+        }
+
+        .zone2-info {
+            border-left: 4px solid #ffd700;
+        }
+
+        .zone3-info {
+            border-left: 4px solid #ff4444;
+        }
+
+        .unlocked {
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .locked {
+            background: rgba(244, 67, 54, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🌊 水域分层系统测试</h3>
+            <p><strong>新功能特点：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 3层水域分层系统</li>
+                <li>✅ 鱼类按层分布</li>
+                <li>✅ 金币解锁机制</li>
+                <li>✅ 迷雾遮挡效果</li>
+                <li>✅ 移动区域限制</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="addCoins(100)">+100金币</button>
+                <button class="test-button unlock-button" onclick="forceUnlockZone2()">强制解锁2层</button>
+                <button class="test-button unlock-button" onclick="forceUnlockZone3()">强制解锁3层</button>
+                <button class="test-button" onclick="resetZones()">重置水域</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>水域分层：</strong></div>
+                <div>🌊 1层(30-55%): 小鱼 - 免费</div>
+                <div>🐟 2层(55-80%): 小鱼+大鱼 - 150金币</div>
+                <div>🐙 3层(80-100%): 全部鱼类 - 300金币</div>
+                <div><strong>鱼类数量：</strong></div>
+                <div>小鱼: 16条 | 大鱼: 8条 | 章鱼: 4条</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 水域状态监控</h4>
+            <div id="zoneStatus">
+                <!-- 水域状态将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试说明：</strong> 尝试进入未解锁区域，观察迷雾效果和解锁提示
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.player) {
+                    console.log('水域分层系统测试模式启动');
+                    
+                    // 开始状态更新循环
+                    updateZoneStatus();
+                }
+            }, 3000);
+        });
+
+        // 添加金币
+        function addCoins(amount) {
+            if (!game) return;
+            
+            game.coins += amount;
+            console.log(`添加${amount}金币，当前金币：${game.coins}`);
+        }
+
+        // 强制解锁2层
+        function forceUnlockZone2() {
+            if (!game) return;
+            
+            game.waterZones.zone2.unlocked = true;
+            game.createFishes(); // 重新生成鱼类
+            console.log('强制解锁2层水域');
+        }
+
+        // 强制解锁3层
+        function forceUnlockZone3() {
+            if (!game) return;
+            
+            game.waterZones.zone3.unlocked = true;
+            game.createFishes(); // 重新生成鱼类
+            console.log('强制解锁3层水域');
+        }
+
+        // 重置水域
+        function resetZones() {
+            if (!game) return;
+            
+            game.waterZones.zone2.unlocked = false;
+            game.waterZones.zone3.unlocked = false;
+            game.coins = 100; // 重置金币
+            game.createFishes(); // 重新生成鱼类
+            console.log('重置所有水域');
+        }
+
+        // 更新水域状态监控
+        function updateZoneStatus() {
+            if (!game) return;
+            
+            const statusDiv = document.getElementById('zoneStatus');
+            
+            const zones = game.waterZones;
+            const fishCounts = {
+                small: game.fishes.filter(f => f.type === 'small').length,
+                big: game.fishes.filter(f => f.type === 'big').length,
+                octopus: game.fishes.filter(f => f.type === 'octopus').length
+            };
+            
+            statusDiv.innerHTML = `
+                <div class="zone-info zone1-info unlocked">
+                    <div><strong>🌊 浅水区域 (1层)</strong></div>
+                    <div>状态: 已解锁</div>
+                    <div>深度: 30-55%</div>
+                    <div>鱼类: 小鱼</div>
+                    <div>费用: 免费</div>
+                </div>
+                <div class="zone-info zone2-info ${zones.zone2.unlocked ? 'unlocked' : 'locked'}">
+                    <div><strong>🐟 中水区域 (2层)</strong></div>
+                    <div>状态: ${zones.zone2.unlocked ? '已解锁' : '未解锁'}</div>
+                    <div>深度: 55-80%</div>
+                    <div>鱼类: 小鱼 + 大鱼</div>
+                    <div>费用: ${zones.zone2.cost}金币</div>
+                </div>
+                <div class="zone-info zone3-info ${zones.zone3.unlocked ? 'unlocked' : 'locked'}">
+                    <div><strong>🐙 深水区域 (3层)</strong></div>
+                    <div>状态: ${zones.zone3.unlocked ? '已解锁' : '未解锁'}</div>
+                    <div>深度: 80-100%</div>
+                    <div>鱼类: 小鱼 + 大鱼 + 章鱼</div>
+                    <div>费用: ${zones.zone3.cost}金币</div>
+                </div>
+                <div class="zone-info">
+                    <div><strong>📊 当前状态</strong></div>
+                    <div>金币: ${game.coins}</div>
+                    <div>小鱼: ${fishCounts.small}条</div>
+                    <div>大鱼: ${fishCounts.big}条</div>
+                    <div>章鱼: ${fishCounts.octopus}条</div>
+                    <div>总鱼数: ${game.fishes.length}条</div>
+                </div>
+            `;
+            
+            // 继续更新
+            setTimeout(updateZoneStatus, 1000);
+        }
+    </script>
+</body>
+</html>

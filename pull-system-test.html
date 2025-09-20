@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>鱼线拉拽系统测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        /* 拉拽按钮 */
+        .pull-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 193, 7, 0.8);
+            border: 3px solid rgba(255, 193, 7, 1);
+            border-radius: 50%;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            user-select: none;
+            touch-action: manipulation;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .pull-button.active {
+            background: rgba(255, 152, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        .pull-button.visible {
+            display: flex;
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 200px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🎣 鱼线拉拽系统测试</h3>
+            <p><strong>测试功能：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 击中鱼类后的拉拽功能</li>
+                <li>✅ PC端空格键拉拽控制</li>
+                <li>✅ 移动端拉拽按钮</li>
+                <li>✅ 拉拽消耗体力系统</li>
+                <li>✅ 鱼线动态长度调整</li>
+                <li>✅ 鱼类反抗机制</li>
+                <li>✅ 鱼线张力和损伤</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="autoShoot()">自动射击</button>
+                <button class="test-button" onclick="resetGame()">重置游戏</button>
+                <button class="test-button" onclick="toggleInfo()">切换信息</button>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 拉拽状态</h4>
+            <div>玩家体力: <span id="playerStamina">100%</span></div>
+            <div>鱼类体力: <span id="fishStamina">-</span></div>
+            <div>鱼线张力: <span id="lineTension">-</span></div>
+            <div>鱼线长度: <span id="lineLength">-</span></div>
+            <div>拉拽状态: <span id="pullStatus">未拉拽</span></div>
+        </div>
+
+        <div class="controls">
+            <strong>PC控制:</strong> WASD移动 | 鼠标瞄准 | 空格键射击/拉拽<br>
+            <strong>移动端:</strong> 虚拟摇杆移动 | 射击按钮 | 拉拽按钮
+        </div>
+
+        <!-- 拉拽按钮 -->
+        <div class="pull-button" id="pullButton">
+            拉拽<br>鱼线
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let showInfo = true;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = false;
+                    console.log('拉拽系统测试模式启动');
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                }
+            }, 2000);
+        });
+
+        // 自动射击功能
+        function autoShoot() {
+            if (!game || !game.fishes || game.fishes.length === 0) return;
+            
+            // 找到最近的鱼
+            let closestFish = null;
+            let closestDistance = Infinity;
+            
+            game.fishes.forEach(fish => {
+                const dx = fish.x - game.player.x;
+                const dy = fish.y - game.player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestFish = fish;
+                }
+            });
+            
+            if (closestFish) {
+                // 设置瞄准方向
+                const dx = closestFish.x - game.player.x;
+                const dy = closestFish.y - game.player.y;
+                
+                game.input.mouse.x = game.player.x + dx;
+                game.input.mouse.y = game.player.y + dy;
+                
+                // 射击
+                game.handleShoot();
+                
+                console.log('自动射击目标:', closestFish.type);
+            }
+        }
+
+        // 重置游戏
+        function resetGame() {
+            if (!game) return;
+            
+            // 重置鱼线
+            if (game.fishingLine) {
+                game.fishingLine = null;
+            }
+            
+            // 重置鱼枪
+            if (game.harpoon) {
+                game.harpoon = null;
+            }
+            
+            // 重置玩家状态
+            game.player.stamina = game.player.maxStamina;
+            game.player.isPulling = false;
+            
+            // 重置鱼类状态
+            game.fishes.forEach(fish => {
+                fish.isCaught = false;
+                fish.stamina = fish.maxStamina;
+            });
+            
+            console.log('游戏状态已重置');
+        }
+
+        // 切换信息显示
+        function toggleInfo() {
+            showInfo = !showInfo;
+            const statusPanel = document.getElementById('statusPanel');
+            statusPanel.style.display = showInfo ? 'block' : 'none';
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            if (!game) return;
+            
+            // 更新玩家体力
+            const playerStaminaPercent = Math.round((game.player.stamina / game.player.maxStamina) * 100);
+            document.getElementById('playerStamina').textContent = playerStaminaPercent + '%';
+            
+            // 更新拉拽状态
+            document.getElementById('pullStatus').textContent = game.player.isPulling ? '正在拉拽' : '未拉拽';
+            
+            // 更新鱼线信息
+            if (game.fishingLine && !game.fishingLine.broken) {
+                const fish = game.fishingLine.fish;
+                if (fish) {
+                    const fishStaminaPercent = Math.round((fish.stamina / fish.maxStamina) * 100);
+                    document.getElementById('fishStamina').textContent = fishStaminaPercent + '%';
+                }
+                
+                const tensionPercent = Math.round(game.fishingLine.tension * 100);
+                document.getElementById('lineTension').textContent = tensionPercent + '%';
+                
+                const lengthPercent = Math.round((game.fishingLine.currentLength / game.fishingLine.maxLength) * 100);
+                document.getElementById('lineLength').textContent = lengthPercent + '%';
+            } else {
+                document.getElementById('fishStamina').textContent = '-';
+                document.getElementById('lineTension').textContent = '-';
+                document.getElementById('lineLength').textContent = '-';
+            }
+            
+            // 继续更新
+            setTimeout(updateStatus, 100);
+        }
+
+        // 键盘提示
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && game && game.fishingLine && !game.fishingLine.broken) {
+                console.log('开始拉拽鱼线 (空格键)');
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' && game && game.fishingLine && !game.fishingLine.broken) {
+                console.log('停止拉拽鱼线 (空格键)');
+            }
+        });
+    </script>
+</body>
+</html>

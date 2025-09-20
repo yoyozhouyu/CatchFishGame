@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>水面位置调整测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 280px;
+            z-index: 100;
+        }
+
+        .depth-info {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .surface-info {
+            border-left: 4px solid #4a90e2;
+        }
+
+        .shallow-info {
+            border-left: 4px solid #ffd700;
+        }
+
+        .deep-info {
+            border-left: 4px solid #ff4444;
+        }
+
+        .position-info {
+            border-left: 4px solid #8b4513;
+        }
+
+        .depth-indicator {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 80%;
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 30%,
+                rgba(25, 25, 112, 0.95) 70%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            z-index: 50;
+        }
+
+        .depth-marker {
+            position: absolute;
+            left: -5px;
+            width: 40px;
+            height: 3px;
+            background: #ff4444;
+            border-radius: 2px;
+            transition: top 0.3s ease;
+        }
+
+        .surface-line {
+            position: absolute;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: #4a90e2;
+            border-radius: 1px;
+            top: 30%;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="depth-indicator">
+            <div class="surface-line"></div>
+            <div class="depth-marker" id="depthMarker"></div>
+        </div>
+        
+        <div class="info-panel">
+            <h3>🌊 水面位置调整测试</h3>
+            <p><strong>调整内容：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 水面位置从10%下移到30%</li>
+                <li>✅ 鱼类运动区域同步下移</li>
+                <li>✅ 障碍物分布层级调整</li>
+                <li>✅ 氧气恢复区域调整</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="moveToSurface()">移动到水面</button>
+                <button class="test-button" onclick="moveToShallow()">移动到浅水</button>
+                <button class="test-button" onclick="moveToDeep()">移动到深水</button>
+                <button class="test-button" onclick="showDepthInfo()">显示深度信息</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>深度分层：</strong></div>
+                <div>🌊 水面层: 0-30%（氧气恢复）</div>
+                <div>🐟 浅水层: 30-45%（少量障碍）</div>
+                <div>🪨 中层: 45-70%（中等障碍）</div>
+                <div>⚓ 深层: 70-85%（大量障碍）</div>
+                <div>🚢 海底: 85-100%（沉船区域）</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 深度状态监控</h4>
+            <div id="depthStatus">
+                <!-- 深度状态将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试说明：</strong> 使用WASD移动，观察不同深度的氧气变化和障碍物分布
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.player) {
+                    console.log('水面位置调整测试模式启动');
+                    
+                    // 开始状态更新循环
+                    updateDepthStatus();
+                }
+            }, 3000);
+        });
+
+        // 移动到水面
+        function moveToSurface() {
+            if (!game || !game.player) return;
+            
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * 0.25; // 水面位置
+            game.player.vx = 0;
+            game.player.vy = 0;
+            console.log('玩家移动到水面');
+        }
+
+        // 移动到浅水
+        function moveToShallow() {
+            if (!game || !game.player) return;
+            
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * 0.5; // 浅水位置
+            game.player.vx = 0;
+            game.player.vy = 0;
+            console.log('玩家移动到浅水');
+        }
+
+        // 移动到深水
+        function moveToDeep() {
+            if (!game || !game.player) return;
+            
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * 0.8; // 深水位置
+            game.player.vx = 0;
+            game.player.vy = 0;
+            console.log('玩家移动到深水');
+        }
+
+        // 显示深度信息
+        function showDepthInfo() {
+            if (!game || !game.player) return;
+            
+            const depthPercent = (game.player.y / game.gameHeight) * 100;
+            let depthZone = '';
+            
+            if (depthPercent <= 30) {
+                depthZone = '水面层';
+            } else if (depthPercent <= 45) {
+                depthZone = '浅水层';
+            } else if (depthPercent <= 70) {
+                depthZone = '中层';
+            } else if (depthPercent <= 85) {
+                depthZone = '深层';
+            } else {
+                depthZone = '海底';
+            }
+            
+            console.log(`当前深度: ${Math.round(depthPercent)}% (${depthZone})`);
+            console.log(`氧气状态: ${game.player.isAtSurface ? '恢复中' : '消耗中'}`);
+        }
+
+        // 更新深度状态监控
+        function updateDepthStatus() {
+            if (!game || !game.player) return;
+            
+            const statusDiv = document.getElementById('depthStatus');
+            const depthMarker = document.getElementById('depthMarker');
+            
+            const depthPercent = (game.player.y / game.gameHeight) * 100;
+            const surfaceThreshold = 30;
+            const shallowThreshold = 45;
+            const deepThreshold = 70;
+            const bottomThreshold = 85;
+            
+            let depthZone = '';
+            let zoneClass = '';
+            
+            if (depthPercent <= surfaceThreshold) {
+                depthZone = '水面层';
+                zoneClass = 'surface-info';
+            } else if (depthPercent <= shallowThreshold) {
+                depthZone = '浅水层';
+                zoneClass = 'shallow-info';
+            } else if (depthPercent <= deepThreshold) {
+                depthZone = '中层';
+                zoneClass = 'position-info';
+            } else if (depthPercent <= bottomThreshold) {
+                depthZone = '深层';
+                zoneClass = 'deep-info';
+            } else {
+                depthZone = '海底';
+                zoneClass = 'deep-info';
+            }
+            
+            // 更新深度标记位置
+            depthMarker.style.top = `${depthPercent * 0.8}%`;
+            
+            statusDiv.innerHTML = `
+                <div class="depth-info ${zoneClass}">
+                    <div><strong>🌊 当前位置</strong></div>
+                    <div>深度: ${Math.round(depthPercent)}%</div>
+                    <div>区域: ${depthZone}</div>
+                    <div>坐标: (${Math.round(game.player.x)}, ${Math.round(game.player.y)})</div>
+                </div>
+                <div class="depth-info surface-info">
+                    <div><strong>💨 氧气状态</strong></div>
+                    <div>氧气: ${Math.round(game.player.oxygen)}/${game.player.maxOxygen}</div>
+                    <div>状态: ${game.player.isAtSurface ? '恢复中' : '消耗中'}</div>
+                    <div>水面检测: ${game.player.y < game.gameHeight * 0.3 ? '是' : '否'}</div>
+                </div>
+                <div class="depth-info position-info">
+                    <div><strong>🎯 区域特征</strong></div>
+                    <div>障碍物密度: ${getObstacleDensity(depthPercent)}</div>
+                    <div>鱼类活动: ${getFishActivity(depthPercent)}</div>
+                    <div>危险等级: ${getDangerLevel(depthPercent)}</div>
+                </div>
+            `;
+            
+            // 继续更新
+            setTimeout(updateDepthStatus, 200);
+        }
+
+        // 获取障碍物密度描述
+        function getObstacleDensity(depthPercent) {
+            if (depthPercent <= 45) return '稀少';
+            if (depthPercent <= 70) return '中等';
+            if (depthPercent <= 85) return '密集';
+            return '极密集';
+        }
+
+        // 获取鱼类活动描述
+        function getFishActivity(depthPercent) {
+            if (depthPercent <= 30) return '少量';
+            if (depthPercent <= 70) return '活跃';
+            return '丰富';
+        }
+
+        // 获取危险等级描述
+        function getDangerLevel(depthPercent) {
+            if (depthPercent <= 30) return '安全';
+            if (depthPercent <= 45) return '低';
+            if (depthPercent <= 70) return '中等';
+            if (depthPercent <= 85) return '高';
+            return '极高';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>UI布局测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .layout-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 250px;
+            z-index: 100;
+        }
+
+        .ui-element {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .warning {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        /* 音乐控制按钮 */
+        .music-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .music-button {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .music-button:hover {
+            background: rgba(0, 0, 0, 0.9);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+
+        .volume-slider {
+            width: 100px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+        }
+
+        .volume-slider input {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <!-- 音乐控制 -->
+        <div class="music-controls">
+            <div class="music-button" id="muteButton" title="静音/取消静音">
+                🔊
+            </div>
+            <div class="volume-slider" title="音量控制">
+                <input type="range" id="volumeSlider" min="0" max="100" value="30">
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>📐 UI布局测试</h3>
+            <p><strong>测试功能：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 体力条长度调整</li>
+                <li>✅ 金币栏位置检查</li>
+                <li>✅ UI元素重叠检测</li>
+                <li>✅ 不同屏幕尺寸适配</li>
+                <li>✅ 音乐控制位置</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="testDifferentSizes()">测试不同尺寸</button>
+                <button class="test-button" onclick="toggleFullscreen()">切换全屏</button>
+                <button class="test-button" onclick="simulateSmallScreen()">模拟小屏幕</button>
+                <button class="test-button" onclick="resetSize()">重置尺寸</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div>体力条宽度: 120px (原200px)</div>
+                <div>金币栏位置: 屏幕中央上方</div>
+                <div>音乐控制: 左上角</div>
+            </div>
+        </div>
+
+        <div class="layout-info">
+            <h4>📊 布局信息</h4>
+            <div class="ui-element">
+                <strong>屏幕尺寸:</strong> <span id="screenSize">-</span>
+            </div>
+            <div class="ui-element">
+                <strong>画布尺寸:</strong> <span id="canvasSize">-</span>
+            </div>
+            <div class="ui-element">
+                <strong>体力条位置:</strong> <span id="staminaBarPos">左上角 (20, 20)</span>
+            </div>
+            <div class="ui-element">
+                <strong>金币栏位置:</strong> <span id="coinBarPos">-</span>
+            </div>
+            <div class="ui-element">
+                <strong>音乐控制位置:</strong> <span id="musicControlPos">左上角 (20, 20)</span>
+            </div>
+            <div class="ui-element">
+                <strong>重叠检测:</strong> <span id="overlapStatus" class="success">无重叠</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>布局测试:</strong> 检查UI元素位置和重叠情况
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = false;
+                    console.log('UI布局测试模式启动');
+                    
+                    // 设置音乐控制
+                    setupMusicControls();
+                    
+                    // 开始布局信息更新
+                    updateLayoutInfo();
+                }
+            }, 2000);
+        });
+
+        // 设置音乐控制
+        function setupMusicControls() {
+            const muteButton = document.getElementById('muteButton');
+            const volumeSlider = document.getElementById('volumeSlider');
+
+            muteButton.addEventListener('click', () => {
+                const isMuted = game.toggleMute();
+                muteButton.textContent = isMuted ? '🔇' : '🔊';
+            });
+
+            volumeSlider.addEventListener('input', (e) => {
+                const volume = e.target.value / 100;
+                game.setMusicVolume(volume);
+            });
+        }
+
+        // 测试不同尺寸
+        function testDifferentSizes() {
+            const sizes = [
+                { width: 800, height: 600 },
+                { width: 1024, height: 768 },
+                { width: 1200, height: 800 },
+                { width: 1920, height: 1080 }
+            ];
+            
+            let index = 0;
+            const changeSizeInterval = setInterval(() => {
+                if (index < sizes.size) {
+                    const size = sizes[index];
+                    resizeCanvas(size.width, size.height);
+                    console.log(`测试尺寸: ${size.width}x${size.height}`);
+                    index++;
+                } else {
+                    clearInterval(changeSizeInterval);
+                    resetSize();
+                }
+            }, 2000);
+        }
+
+        // 切换全屏
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // 模拟小屏幕
+        function simulateSmallScreen() {
+            resizeCanvas(640, 480);
+            console.log('模拟小屏幕: 640x480');
+        }
+
+        // 重置尺寸
+        function resetSize() {
+            if (game && game.canvas) {
+                game.canvas.style.width = '';
+                game.canvas.style.height = '';
+                game.resizeCanvas();
+            }
+            console.log('尺寸已重置');
+        }
+
+        // 调整画布尺寸
+        function resizeCanvas(width, height) {
+            if (game && game.canvas) {
+                game.canvas.style.width = width + 'px';
+                game.canvas.style.height = height + 'px';
+                game.gameWidth = width;
+                game.gameHeight = height;
+            }
+        }
+
+        // 更新布局信息
+        function updateLayoutInfo() {
+            if (!game) return;
+
+            // 更新屏幕尺寸
+            document.getElementById('screenSize').textContent = 
+                `${window.innerWidth}x${window.innerHeight}`;
+
+            // 更新画布尺寸
+            document.getElementById('canvasSize').textContent = 
+                `${game.gameWidth}x${game.gameHeight}`;
+
+            // 更新金币栏位置
+            const coinBarX = game.gameWidth / 2 - 100;
+            document.getElementById('coinBarPos').textContent = 
+                `中央上方 (${coinBarX}, 20)`;
+
+            // 检查重叠
+            checkOverlap();
+
+            // 继续更新
+            setTimeout(updateLayoutInfo, 1000);
+        }
+
+        // 检查UI元素重叠
+        function checkOverlap() {
+            if (!game) return;
+
+            const staminaBarEnd = 20 + 120; // 体力条结束位置
+            const coinBarStart = game.gameWidth / 2 - 100; // 金币栏开始位置
+            const musicControlEnd = 20 + 50 + 10 + 100; // 音乐控制结束位置
+
+            const overlapStatus = document.getElementById('overlapStatus');
+
+            let hasOverlap = false;
+            let overlapInfo = [];
+
+            // 检查体力条与金币栏重叠
+            if (staminaBarEnd > coinBarStart && coinBarStart > 20) {
+                hasOverlap = true;
+                overlapInfo.push('体力条与金币栏重叠');
+            }
+
+            // 检查音乐控制与体力条重叠
+            if (musicControlEnd > 20 && musicControlEnd < staminaBarEnd) {
+                hasOverlap = true;
+                overlapInfo.push('音乐控制与体力条重叠');
+            }
+
+            // 检查音乐控制与金币栏重叠
+            if (musicControlEnd > coinBarStart && coinBarStart > 20) {
+                hasOverlap = true;
+                overlapInfo.push('音乐控制与金币栏重叠');
+            }
+
+            if (hasOverlap) {
+                overlapStatus.textContent = overlapInfo.join(', ');
+                overlapStatus.className = 'error';
+            } else {
+                overlapStatus.textContent = '无重叠';
+                overlapStatus.className = 'success';
+            }
+        }
+    </script>
+</body>
+</html>

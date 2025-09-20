@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>海底狩猎游戏 - 系统兼容性测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .test-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .test-item:last-child {
+            border-bottom: none;
+        }
+
+        .status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .status.pass {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status.fail {
+            background: #f44336;
+            color: white;
+        }
+
+        .status.warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .test-canvas {
+            width: 100%;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+
+        .performance-meter {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .performance-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39, #FFC107, #FF9800, #f44336);
+            transition: width 0.3s ease;
+        }
+
+        .button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+            display: inline-block;
+        }
+
+        .button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .fps-counter {
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .test-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌊 系统兼容性测试</h1>
+        
+        <div class="test-section">
+            <h2>🔧 基础功能检测</h2>
+            <div class="test-item">
+                <span>Canvas 2D 支持</span>
+                <span class="status" id="canvas-status">检测中...</span>
+            </div>
+            <div class="test-item">
+                <span>触控事件支持</span>
+                <span class="status" id="touch-status">检测中...</span>
+            </div>
+            <div class="test-item">
+                <span>设备像素比</span>
+                <span class="status" id="dpr-status">检测中...</span>
+            </div>
+            <div class="test-item">
+                <span>本地存储支持</span>
+                <span class="status" id="storage-status">检测中...</span>
+            </div>
+            <div class="test-item">
+                <span>音频上下文支持</span>
+                <span class="status" id="audio-status">检测中...</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📱 设备信息</h2>
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>浏览器信息</h3>
+                    <p id="browser-info">检测中...</p>
+                </div>
+                <div class="info-card">
+                    <h3>屏幕分辨率</h3>
+                    <p id="screen-info">检测中...</p>
+                </div>
+                <div class="info-card">
+                    <h3>设备类型</h3>
+                    <p id="device-info">检测中...</p>
+                </div>
+                <div class="info-card">
+                    <h3>网络状态</h3>
+                    <p id="network-info">检测中...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>⚡ 性能测试</h2>
+            <div class="fps-counter" id="fps-counter">0 FPS</div>
+            <div class="performance-meter">
+                <div class="performance-bar" id="performance-bar" style="width: 0%"></div>
+            </div>
+            <canvas class="test-canvas" id="performance-canvas"></canvas>
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="button" onclick="startPerformanceTest()">开始性能测试</button>
+                <button class="button" onclick="stopPerformanceTest()">停止测试</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎮 控制测试</h2>
+            <div class="test-item">
+                <span>键盘输入</span>
+                <span class="status" id="keyboard-status">等待输入...</span>
+            </div>
+            <div class="test-item">
+                <span>鼠标输入</span>
+                <span class="status" id="mouse-status">等待输入...</span>
+            </div>
+            <div class="test-item">
+                <span>触控输入</span>
+                <span class="status" id="touch-input-status">等待输入...</span>
+            </div>
+            <canvas class="test-canvas" id="input-canvas"></canvas>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 测试结果</h2>
+            <div id="test-results">
+                <p>正在进行兼容性检测...</p>
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="button" onclick="generateReport()">生成测试报告</button>
+                <button class="button" onclick="window.location.href='index.html'">启动完整游戏</button>
+                <button class="button" onclick="window.location.href='simple-game.html'">启动演示版</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 测试结果存储
+        const testResults = {
+            canvas: false,
+            touch: false,
+            dpr: 1,
+            storage: false,
+            audio: false,
+            performance: 0,
+            browser: '',
+            device: '',
+            screen: '',
+            network: ''
+        };
+
+        // 性能测试变量
+        let performanceTest = null;
+        let frameCount = 0;
+        let lastTime = 0;
+        let fps = 0;
+
+        // 初始化测试
+        document.addEventListener('DOMContentLoaded', () => {
+            runCompatibilityTests();
+            setupInputTests();
+        });
+
+        // 运行兼容性测试
+        function runCompatibilityTests() {
+            // Canvas 2D 测试
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                testResults.canvas = !!ctx;
+                updateStatus('canvas-status', testResults.canvas);
+            } catch (e) {
+                updateStatus('canvas-status', false);
+            }
+
+            // 触控支持测试
+            testResults.touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            updateStatus('touch-status', testResults.touch);
+
+            // 设备像素比
+            testResults.dpr = window.devicePixelRatio || 1;
+            document.getElementById('dpr-status').textContent = testResults.dpr.toFixed(1);
+            document.getElementById('dpr-status').className = 'status ' + (testResults.dpr >= 1 ? 'pass' : 'warning');
+
+            // 本地存储测试
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+                testResults.storage = true;
+                updateStatus('storage-status', true);
+            } catch (e) {
+                updateStatus('storage-status', false);
+            }
+
+            // 音频上下文测试
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const audioContext = new AudioContext();
+                testResults.audio = !!audioContext;
+                updateStatus('audio-status', testResults.audio);
+            } catch (e) {
+                updateStatus('audio-status', false);
+            }
+
+            // 设备信息
+            updateDeviceInfo();
+        }
+
+        // 更新状态显示
+        function updateStatus(elementId, passed) {
+            const element = document.getElementById(elementId);
+            element.textContent = passed ? '✅ 支持' : '❌ 不支持';
+            element.className = 'status ' + (passed ? 'pass' : 'fail');
+        }
+
+        // 更新设备信息
+        function updateDeviceInfo() {
+            // 浏览器信息
+            testResults.browser = navigator.userAgent;
+            document.getElementById('browser-info').textContent = getBrowserName();
+
+            // 屏幕信息
+            testResults.screen = `${screen.width}x${screen.height}`;
+            document.getElementById('screen-info').textContent = 
+                `${screen.width}x${screen.height} (${window.innerWidth}x${window.innerHeight})`;
+
+            // 设备类型
+            testResults.device = getDeviceType();
+            document.getElementById('device-info').textContent = testResults.device;
+
+            // 网络状态
+            testResults.network = navigator.onLine ? '在线' : '离线';
+            if (navigator.connection) {
+                testResults.network += ` (${navigator.connection.effectiveType || '未知'})`;
+            }
+            document.getElementById('network-info').textContent = testResults.network;
+        }
+
+        // 获取浏览器名称
+        function getBrowserName() {
+            const ua = navigator.userAgent;
+            if (ua.includes('Chrome')) return 'Chrome';
+            if (ua.includes('Firefox')) return 'Firefox';
+            if (ua.includes('Safari')) return 'Safari';
+            if (ua.includes('Edge')) return 'Edge';
+            return '未知浏览器';
+        }
+
+        // 获取设备类型
+        function getDeviceType() {
+            const ua = navigator.userAgent;
+            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+                return '移动设备';
+            }
+            return 'PC设备';
+        }
+
+        // 开始性能测试
+        function startPerformanceTest() {
+            if (performanceTest) return;
+
+            const canvas = document.getElementById('performance-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            frameCount = 0;
+            lastTime = performance.now();
+
+            performanceTest = setInterval(() => {
+                // 绘制性能测试图形
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                const time = performance.now() * 0.001;
+                for (let i = 0; i < 50; i++) {
+                    ctx.fillStyle = `hsl(${(time * 100 + i * 10) % 360}, 70%, 60%)`;
+                    ctx.beginPath();
+                    ctx.arc(
+                        Math.sin(time + i * 0.1) * 100 + canvas.width / 2,
+                        Math.cos(time + i * 0.1) * 50 + canvas.height / 2,
+                        5 + Math.sin(time * 2 + i) * 3,
+                        0, Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+
+                frameCount++;
+                const currentTime = performance.now();
+                if (currentTime - lastTime >= 1000) {
+                    fps = Math.round(frameCount * 1000 / (currentTime - lastTime));
+                    frameCount = 0;
+                    lastTime = currentTime;
+                    
+                    document.getElementById('fps-counter').textContent = fps + ' FPS';
+                    const performancePercent = Math.min(fps / 60 * 100, 100);
+                    document.getElementById('performance-bar').style.width = performancePercent + '%';
+                    
+                    testResults.performance = fps;
+                }
+            }, 16);
+        }
+
+        // 停止性能测试
+        function stopPerformanceTest() {
+            if (performanceTest) {
+                clearInterval(performanceTest);
+                performanceTest = null;
+            }
+        }
+
+        // 设置输入测试
+        function setupInputTests() {
+            const canvas = document.getElementById('input-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            // 键盘测试
+            document.addEventListener('keydown', () => {
+                document.getElementById('keyboard-status').textContent = '✅ 正常';
+                document.getElementById('keyboard-status').className = 'status pass';
+            });
+
+            // 鼠标测试
+            canvas.addEventListener('mousemove', (e) => {
+                document.getElementById('mouse-status').textContent = '✅ 正常';
+                document.getElementById('mouse-status').className = 'status pass';
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.beginPath();
+                ctx.arc(x, y, 10, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 触控测试
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                document.getElementById('touch-input-status').textContent = '✅ 正常';
+                document.getElementById('touch-input-status').className = 'status pass';
+                
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                
+                ctx.fillStyle = 'rgba(255, 100, 100, 0.3)';
+                ctx.beginPath();
+                ctx.arc(x, y, 15, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        // 生成测试报告
+        function generateReport() {
+            const results = document.getElementById('test-results');
+            let report = '<h3>📋 兼容性测试报告</h3>';
+            
+            const score = calculateCompatibilityScore();
+            report += `<p><strong>兼容性评分: ${score}/100</strong></p>`;
+            
+            if (score >= 80) {
+                report += '<p style="color: #4CAF50;">✅ 系统完全兼容，可以流畅运行游戏</p>';
+            } else if (score >= 60) {
+                report += '<p style="color: #ff9800;">⚠️ 系统基本兼容，可能存在性能问题</p>';
+            } else {
+                report += '<p style="color: #f44336;">❌ 系统兼容性较差，建议升级浏览器或设备</p>';
+            }
+            
+            report += '<ul>';
+            report += `<li>Canvas 2D: ${testResults.canvas ? '✅' : '❌'}</li>`;
+            report += `<li>触控支持: ${testResults.touch ? '✅' : '❌'}</li>`;
+            report += `<li>性能表现: ${testResults.performance} FPS</li>`;
+            report += `<li>设备类型: ${testResults.device}</li>`;
+            report += `<li>浏览器: ${getBrowserName()}</li>`;
+            report += '</ul>';
+            
+            results.innerHTML = report;
+        }
+
+        // 计算兼容性评分
+        function calculateCompatibilityScore() {
+            let score = 0;
+            
+            if (testResults.canvas) score += 25;
+            if (testResults.touch) score += 15;
+            if (testResults.storage) score += 10;
+            if (testResults.audio) score += 10;
+            if (testResults.dpr >= 1) score += 10;
+            
+            // 性能评分
+            if (testResults.performance >= 50) score += 20;
+            else if (testResults.performance >= 30) score += 15;
+            else if (testResults.performance >= 15) score += 10;
+            
+            // 设备类型评分
+            if (testResults.device === 'PC设备') score += 10;
+            else score += 5;
+            
+            return Math.min(score, 100);
+        }
+    </script>
+</body>
+</html>

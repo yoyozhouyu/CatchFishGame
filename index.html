@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>海底狩猎游戏 - Underwater Hunting Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        /* HUD界面样式 */
+        .hud-element {
+            position: absolute;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* 体力和氧气条 */
+        .status-bars {
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .status-bar {
+            width: 150px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .status-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .stamina-fill {
+            background: linear-gradient(90deg, #ff6b6b, #ffa500);
+        }
+
+        .oxygen-fill {
+            background: linear-gradient(90deg, #4ecdc4, #45b7d1);
+        }
+
+        /* 控制说明 */
+        .controls-info {
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.4;
+            max-width: 250px;
+        }
+
+        /* 移动端控制器 */
+        .mobile-controls {
+            position: absolute;
+            z-index: 200;
+            pointer-events: auto;
+        }
+
+        /* 虚拟摇杆 */
+        .virtual-joystick {
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+        }
+
+        .joystick-base {
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .joystick-knob {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease;
+        }
+
+        /* 右侧控制按钮 */
+        .right-controls {
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .control-button {
+            background: rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .boost-button {
+            width: 80px;
+            height: 80px;
+            font-size: 16px;
+        }
+
+        .shoot-button {
+            width: 100px;
+            height: 100px;
+            font-size: 18px;
+            position: relative;
+        }
+
+        .shoot-button.active {
+            background: rgba(255, 100, 100, 0.5);
+            border-color: rgba(255, 100, 100, 0.8);
+        }
+
+        /* 拉拽按钮 */
+        .pull-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 193, 7, 0.8);
+            border: 3px solid rgba(255, 193, 7, 1);
+            border-radius: 50%;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            user-select: none;
+            touch-action: manipulation;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .pull-button.active {
+            background: rgba(255, 152, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        .pull-button.visible {
+            display: flex;
+        }
+
+        /* 音乐控制按钮 */
+        .music-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .music-button {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .music-button:hover {
+            background: rgba(0, 0, 0, 0.9);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+
+        .music-button.muted {
+            background: rgba(244, 67, 54, 0.7);
+            border-color: rgba(244, 67, 54, 0.5);
+        }
+
+        .volume-slider {
+            width: 100px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+        }
+
+        .volume-slider input {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .volume-slider input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .volume-slider input::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* 鱼线耐久度条 */
+        .line-durability {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 25px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .line-durability-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4757, #ffa502, #2ed573);
+            transition: width 0.3s ease;
+        }
+
+        /* PC端隐藏移动控制器 */
+        .pc-mode .mobile-controls {
+            display: none;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .controls-info {
+                font-size: 12px;
+                padding: 10px;
+                max-width: 200px;
+            }
+            
+            .status-bars {
+                top: 10px;
+                right: 10px;
+            }
+            
+            .status-bar {
+                width: 120px;
+                height: 18px;
+            }
+        }
+
+        /* 加载界面 */
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #87CEEB, #4682B4, #191970);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- 音乐控制 -->
+        <div class="music-controls">
+            <div class="music-button" id="muteButton" title="静音/取消静音">
+                🔊
+            </div>
+            <div class="volume-slider" title="音量控制">
+                <input type="range" id="volumeSlider" min="0" max="100" value="30">
+            </div>
+        </div>
+
+        <!-- 加载界面 -->
+        <div id="loadingScreen" class="loading-screen">
+            <div class="loading-spinner"></div>
+            <div>海底狩猎游戏加载中...</div>
+        </div>
+
+        <!-- 游戏画布 -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- HUD界面元素 -->
+        <div class="hud-element status-bars">
+            <div class="status-bar">
+                <div class="status-fill stamina-fill" id="staminaBar" style="width: 100%;"></div>
+            </div>
+            <div class="status-bar">
+                <div class="status-fill oxygen-fill" id="oxygenBar" style="width: 100%;"></div>
+            </div>
+        </div>
+
+        <div class="hud-element controls-info" id="controlsInfo">
+            <div id="pcControls">
+                <strong>PC控制:</strong><br>
+                WASD - 移动<br>
+                Shift - 加速<br>
+                鼠标 - 瞄准<br>
+                左键/空格 - 射击<br>
+                空格 - 拉拽鱼线
+            </div>
+            <div id="mobileControls" style="display: none;">
+                <strong>触控控制:</strong><br>
+                左下摇杆 - 移动<br>
+                右下按钮 - 加速/射击<br>
+                拖拽射击按钮 - 瞄准
+            </div>
+        </div>
+
+        <!-- 鱼线耐久度条现在在canvas中渲染，不再需要HTML元素 -->
+        <div class="hud-element line-durability" id="lineDurability" style="display: none;">
+            <div class="line-durability-fill" id="lineDurabilityFill" style="width: 100%;"></div>
+        </div>
+
+        <!-- 移动端控制器 -->
+        <div class="mobile-controls virtual-joystick" id="virtualJoystick">
+            <div class="joystick-base">
+                <div class="joystick-knob" id="joystickKnob"></div>
+            </div>
+        </div>
+
+        <div class="mobile-controls right-controls">
+            <div class="control-button boost-button" id="boostButton">
+                加速
+            </div>
+            <div class="control-button shoot-button" id="shootButton">
+                射击
+            </div>
+        </div>
+
+        <!-- 拉拽按钮 -->
+        <div class="pull-button" id="pullButton">
+            拉拽<br>鱼线
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            const game = new UnderwaterHuntingGame();
+
+            // 设置音乐控制
+            setupMusicControls(game);
+        });
+
+        // 设置音乐控制
+        function setupMusicControls(game) {
+            const muteButton = document.getElementById('muteButton');
+            const volumeSlider = document.getElementById('volumeSlider');
+
+            // 静音按钮点击事件
+            muteButton.addEventListener('click', () => {
+                const isMuted = game.toggleMute();
+                muteButton.textContent = isMuted ? '🔇' : '🔊';
+                muteButton.classList.toggle('muted', isMuted);
+            });
+
+            // 音量滑块事件
+            volumeSlider.addEventListener('input', (e) => {
+                const volume = e.target.value / 100;
+                game.setMusicVolume(volume);
+            });
+
+            // 设置初始音量
+            volumeSlider.value = game.settings.musicVolume * 100;
+        }
+    </script>
+</body>
+</html>

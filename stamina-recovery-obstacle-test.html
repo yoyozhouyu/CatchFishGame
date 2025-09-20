@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>体力恢复和障碍物调整测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 280px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .fish-status {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .recovering {
+            border-left: 4px solid #2196F3;
+            background: rgba(33, 150, 243, 0.2);
+        }
+
+        .exhausted {
+            border-left: 4px solid #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+        }
+
+        .fast-swimming {
+            border-left: 4px solid #ff9800;
+            background: rgba(255, 152, 0, 0.2);
+        }
+
+        .normal {
+            border-left: 4px solid #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .test-info {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            width: 250px;
+            z-index: 100;
+        }
+
+        .obstacle-info {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid #9c27b0;
+        }
+
+        .recovery-log {
+            position: absolute;
+            top: 20px;
+            right: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 11px;
+            width: 250px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .log-entry {
+            margin: 3px 0;
+            padding: 3px 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .recovery-entry {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .exhausted-entry {
+            background: rgba(255, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🔄 体力恢复和障碍物调整测试</h3>
+            <p><strong>修复和调整：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 修复鱼类体力恢复后重新游动</li>
+                <li>✅ 去掉海底遮挡物</li>
+                <li>✅ 水中障碍物数量增加50%</li>
+                <li>✅ 体力恢复到25%时重新游动</li>
+                <li>✅ AI参数重新初始化</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="shootAllFish()">射击所有鱼</button>
+                <button class="test-button" onclick="exhaustAllFish()">耗尽所有鱼体力</button>
+                <button class="test-button" onclick="showObstacleInfo()">显示障碍物信息</button>
+                <button class="test-button" onclick="clearRecoveryLog()">清空恢复日志</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>体力值（用户调整）：</strong></div>
+                <div>小鱼: 100 | 大鱼: 150 | 章鱼: 120</div>
+                <div>大鱼和章鱼快速游动倍数: 2.5</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>🐟 鱼类状态监控</h4>
+            <div id="fishStatusList">
+                <!-- 鱼类状态将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="test-info" id="testInfo">
+            <h4>🧪 障碍物信息</h4>
+            <div id="obstacleInfo">
+                <div class="obstacle-info">等待显示障碍物信息...</div>
+            </div>
+        </div>
+
+        <div class="recovery-log" id="recoveryLog">
+            <h4>📋 体力恢复日志</h4>
+            <div id="recoveryEntries">
+                <div class="log-entry">等待体力恢复事件...</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试方法：</strong> 射击鱼类观察体力耗尽 → 观察体力恢复过程 → 验证重新游动
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let recoveryEvents = [];
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = true; // 显示碰撞框
+                    console.log('体力恢复和障碍物调整测试模式启动');
+                    
+                    // 显示障碍物信息
+                    showObstacleInfo();
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                    
+                    // 监听控制台日志
+                    interceptConsoleLog();
+                }
+            }, 2000);
+        });
+
+        // 射击所有鱼类
+        function shootAllFish() {
+            if (!game || !game.fishes) return;
+            
+            let shotCount = 0;
+            game.fishes.forEach((fish, index) => {
+                if (!fish.isCaught) {
+                    setTimeout(() => {
+                        const dx = fish.x - game.player.x;
+                        const dy = fish.y - game.player.y;
+                        
+                        game.input.mouse.x = game.player.x + dx;
+                        game.input.mouse.y = game.player.y + dy;
+                        
+                        game.handleShoot();
+                        console.log(`射击第${index + 1}条${fish.type}鱼`);
+                    }, shotCount * 800);
+                    shotCount++;
+                }
+            });
+        }
+
+        // 耗尽所有鱼的体力
+        function exhaustAllFish() {
+            if (!game || !game.fishes) return;
+            
+            game.fishes.forEach(fish => {
+                fish.stamina = 0;
+                fish.isExhausted = true;
+                fish.isFastSwimming = false;
+            });
+            
+            console.log('所有鱼类体力已耗尽');
+            addRecoveryEntry('💥 强制耗尽所有鱼类体力', 'exhausted-entry');
+        }
+
+        // 显示障碍物信息
+        function showObstacleInfo() {
+            if (!game || !game.obstacles) return;
+            
+            const obstacleInfoDiv = document.getElementById('obstacleInfo');
+            obstacleInfoDiv.innerHTML = '';
+            
+            const totalObstacles = game.obstacles.length;
+            const seaObstacles = game.obstacles.filter(obs => 
+                obs.obstacleType.includes('floating') || 
+                obs.obstacleType.includes('sea_rock') || 
+                obs.obstacleType.includes('shipwreck') ||
+                obs.obstacleType.includes('debris')
+            ).length;
+            
+            obstacleInfoDiv.innerHTML = `
+                <div class="obstacle-info">
+                    <strong>障碍物统计</strong><br>
+                    总数: ${totalObstacles}<br>
+                    水中障碍物: ${seaObstacles}<br>
+                    海底障碍物: 已移除
+                </div>
+                <div class="obstacle-info">
+                    <strong>调整详情</strong><br>
+                    漂浮海藻团: 4 → 6 (+50%)<br>
+                    海中岩石: 3 → 5 (+67%)<br>
+                    海面漂浮物: 2 → 3 (+50%)
+                </div>
+            `;
+        }
+
+        // 清空恢复日志
+        function clearRecoveryLog() {
+            recoveryEvents = [];
+            document.getElementById('recoveryEntries').innerHTML = '<div class="log-entry">日志已清空</div>';
+        }
+
+        // 添加恢复日志条目
+        function addRecoveryEntry(message, type = 'normal') {
+            const entries = document.getElementById('recoveryEntries');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            entries.appendChild(entry);
+            entries.scrollTop = entries.scrollHeight;
+            
+            // 限制日志条目数量
+            while (entries.children.length > 15) {
+                entries.removeChild(entries.firstChild);
+            }
+            
+            recoveryEvents.push({ message, type, timestamp });
+        }
+
+        // 拦截控制台日志
+        function interceptConsoleLog() {
+            const originalConsoleLog = console.log;
+            console.log = function(...args) {
+                const message = args.join(' ');
+                
+                if (message.includes('体力恢复，重新开始游动')) {
+                    addRecoveryEntry(message, 'recovery-entry');
+                } else if (message.includes('体力耗尽')) {
+                    addRecoveryEntry(message, 'exhausted-entry');
+                }
+                
+                originalConsoleLog.apply(console, args);
+            };
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            if (!game || !game.fishes) return;
+            
+            const statusList = document.getElementById('fishStatusList');
+            statusList.innerHTML = '';
+            
+            game.fishes.forEach((fish, index) => {
+                const fishDiv = document.createElement('div');
+                
+                // 根据状态设置样式
+                if (fish.isExhausted) {
+                    fishDiv.className = 'fish-status exhausted';
+                } else if (fish.stamina < fish.maxStamina * 0.5 && !fish.isFastSwimming) {
+                    fishDiv.className = 'fish-status recovering';
+                } else if (fish.isFastSwimming) {
+                    fishDiv.className = 'fish-status fast-swimming';
+                } else {
+                    fishDiv.className = 'fish-status normal';
+                }
+                
+                const staminaPercent = Math.round((fish.stamina / fish.maxStamina) * 100);
+                const recoveryThreshold = Math.round(fish.maxStamina * fish.exhaustedRecoveryThreshold);
+                
+                let statusText = '自由游动';
+                if (fish.isExhausted) {
+                    statusText = '😴 疲劳状态';
+                } else if (fish.isFastSwimming) {
+                    statusText = '🏃 快速游动';
+                } else if (fish.isCaught) {
+                    statusText = '🎣 被捕获';
+                } else if (fish.stamina < fish.maxStamina * 0.5) {
+                    statusText = '🔄 体力恢复中';
+                }
+                
+                fishDiv.innerHTML = `
+                    <div><strong>${fish.type}鱼 #${index + 1}</strong></div>
+                    <div>状态: ${statusText}</div>
+                    <div>体力: ${Math.round(fish.stamina)}/${fish.maxStamina} (${staminaPercent}%)</div>
+                    <div>恢复阈值: ${recoveryThreshold} (25%)</div>
+                    <div>AI定时器: ${fish.aiTimer}/${fish.aiInterval}</div>
+                `;
+                
+                statusList.appendChild(fishDiv);
+            });
+            
+            // 继续更新
+            setTimeout(updateStatus, 300);
+        }
+    </script>
+</body>
+</html>

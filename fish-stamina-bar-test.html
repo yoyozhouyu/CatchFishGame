@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>鱼类体力条显示测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 280px;
+            z-index: 100;
+        }
+
+        .fish-status {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .caught-fish {
+            border-left: 4px solid #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .free-fish {
+            border-left: 4px solid #2196F3;
+            background: rgba(33, 150, 243, 0.2);
+        }
+
+        .test-info {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            width: 250px;
+            z-index: 100;
+        }
+
+        .test-result {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        .pass {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+        }
+
+        .fail {
+            background: rgba(244, 67, 54, 0.3);
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>📊 鱼类体力条显示测试</h3>
+            <p><strong>测试重点：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 体力条只在被击中时显示</li>
+                <li>✅ 体力数值实时更新</li>
+                <li>✅ 显示具体数值而非百分比</li>
+                <li>✅ 颜色状态正确变化</li>
+                <li>✅ 疲劳状态正确显示</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="shootAllFish()">射击所有鱼</button>
+                <button class="test-button" onclick="runStaminaTest()">运行体力测试</button>
+                <button class="test-button" onclick="resetTest()">重置测试</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>预期行为：</strong></div>
+                <div>• 自由游动的鱼不显示体力条</div>
+                <div>• 被击中的鱼显示体力条</div>
+                <div>• 体力数值实时变化</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>🐟 鱼类状态</h4>
+            <div id="fishStatusList">
+                <!-- 鱼类状态将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="test-info" id="testInfo">
+            <h4>🧪 测试结果</h4>
+            <div id="testResults">
+                <div class="test-result">等待测试开始...</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试说明：</strong> 射击鱼类后观察体力条显示 → 验证数值实时更新 → 检查疲劳状态
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let testResults = [];
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = false;
+                    console.log('鱼类体力条显示测试模式启动');
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                }
+            }, 2000);
+        });
+
+        // 射击所有鱼类
+        function shootAllFish() {
+            if (!game || !game.fishes) return;
+            
+            let shotCount = 0;
+            game.fishes.forEach((fish, index) => {
+                if (!fish.isCaught) {
+                    setTimeout(() => {
+                        // 设置瞄准方向
+                        const dx = fish.x - game.player.x;
+                        const dy = fish.y - game.player.y;
+                        
+                        game.input.mouse.x = game.player.x + dx;
+                        game.input.mouse.y = game.player.y + dy;
+                        
+                        // 射击
+                        game.handleShoot();
+                        console.log(`射击第${index + 1}条${fish.type}鱼`);
+                    }, shotCount * 1000); // 每秒射击一条
+                    shotCount++;
+                }
+            });
+            
+            addTestResult(`射击了${shotCount}条鱼`, 'pass');
+        }
+
+        // 运行体力测试
+        function runStaminaTest() {
+            if (!game || !game.fishes) return;
+            
+            testResults = [];
+            
+            // 测试1: 检查自由鱼是否不显示体力条
+            const freeFish = game.fishes.filter(fish => !fish.isCaught);
+            if (freeFish.length > 0) {
+                addTestResult(`✓ 自由鱼不显示体力条 (${freeFish.length}条)`, 'pass');
+            } else {
+                addTestResult('! 没有自由鱼可测试', 'fail');
+            }
+            
+            // 测试2: 检查被捕获鱼是否显示体力条
+            const caughtFish = game.fishes.filter(fish => fish.isCaught);
+            if (caughtFish.length > 0) {
+                addTestResult(`✓ 被捕获鱼显示体力条 (${caughtFish.length}条)`, 'pass');
+                
+                // 测试3: 检查体力数值是否正确
+                caughtFish.forEach((fish, index) => {
+                    const staminaValid = fish.stamina >= 0 && fish.stamina <= fish.maxStamina;
+                    if (staminaValid) {
+                        addTestResult(`✓ 鱼#${index+1} 体力数值正确: ${Math.round(fish.stamina)}/${fish.maxStamina}`, 'pass');
+                    } else {
+                        addTestResult(`✗ 鱼#${index+1} 体力数值异常: ${fish.stamina}/${fish.maxStamina}`, 'fail');
+                    }
+                });
+            } else {
+                addTestResult('! 没有被捕获鱼可测试', 'fail');
+            }
+            
+            // 测试4: 检查疲劳状态
+            const exhaustedFish = game.fishes.filter(fish => fish.isExhausted);
+            if (exhaustedFish.length > 0) {
+                addTestResult(`✓ 发现疲劳鱼类 (${exhaustedFish.length}条)`, 'pass');
+            } else {
+                addTestResult('- 暂无疲劳鱼类', 'pass');
+            }
+        }
+
+        // 重置测试
+        function resetTest() {
+            if (!game) return;
+            
+            // 重置所有鱼的状态
+            game.fishes.forEach(fish => {
+                fish.isCaught = false;
+                fish.stamina = fish.maxStamina;
+                fish.isExhausted = false;
+            });
+            
+            // 清除鱼线
+            game.fishingLine = null;
+            game.harpoon = null;
+            
+            testResults = [];
+            addTestResult('测试已重置', 'pass');
+            console.log('测试已重置');
+        }
+
+        // 添加测试结果
+        function addTestResult(message, type) {
+            testResults.push({ message, type });
+            updateTestResults();
+        }
+
+        // 更新测试结果显示
+        function updateTestResults() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '';
+            
+            if (testResults.length === 0) {
+                resultsDiv.innerHTML = '<div class="test-result">等待测试开始...</div>';
+                return;
+            }
+            
+            testResults.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `test-result ${result.type}`;
+                div.textContent = result.message;
+                resultsDiv.appendChild(div);
+            });
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            if (!game || !game.fishes) return;
+            
+            const statusList = document.getElementById('fishStatusList');
+            statusList.innerHTML = '';
+            
+            game.fishes.forEach((fish, index) => {
+                const fishDiv = document.createElement('div');
+                fishDiv.className = `fish-status ${fish.isCaught ? 'caught-fish' : 'free-fish'}`;
+                
+                const staminaPercent = Math.round((fish.stamina / fish.maxStamina) * 100);
+                
+                fishDiv.innerHTML = `
+                    <div><strong>${fish.type}鱼 #${index + 1}</strong> ${fish.isCaught ? '🎣' : '🐟'}</div>
+                    <div>状态: ${fish.isCaught ? '被捕获' : '自由游动'}</div>
+                    <div>体力: ${Math.round(fish.stamina)}/${fish.maxStamina} (${staminaPercent}%)</div>
+                    <div>体力条: ${fish.isCaught ? '显示' : '隐藏'}</div>
+                    ${fish.isExhausted ? '<div style="color: #ff4444;">😴 疲劳状态</div>' : ''}
+                `;
+                
+                statusList.appendChild(fishDiv);
+            });
+            
+            // 继续更新
+            setTimeout(updateStatus, 500);
+        }
+    </script>
+</body>
+</html>

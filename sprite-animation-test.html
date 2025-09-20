@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>精灵动画和图片资源测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 280px;
+            z-index: 100;
+        }
+
+        .animation-info {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .hero-info {
+            border-left: 4px solid #4a90e2;
+        }
+
+        .fish-info {
+            border-left: 4px solid #ffd700;
+        }
+
+        .obstacle-info {
+            border-left: 4px solid #8b4513;
+        }
+
+        .loading-info {
+            border-left: 4px solid #ff9800;
+            background: rgba(255, 152, 0, 0.2);
+        }
+
+        .test-info {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            width: 250px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🎮 精灵动画和图片资源测试</h3>
+            <p><strong>新功能特点：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 主角序列帧动画（22帧）</li>
+                <li>✅ 4方向朝向控制</li>
+                <li>✅ 动画速度控制（1x/1.5x/2x）</li>
+                <li>✅ 新背景图片</li>
+                <li>✅ 新鱼类图片</li>
+                <li>✅ 新障碍物图片</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="testMovement()">测试移动动画</button>
+                <button class="test-button" onclick="testBoost()">测试加速动画</button>
+                <button class="test-button" onclick="testDirection()">测试方向变换</button>
+                <button class="test-button" onclick="reloadImages()">重新加载图片</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>动画速度：</strong></div>
+                <div>静止: 1倍速 (100ms/帧)</div>
+                <div>移动: 1.5倍速 (67ms/帧)</div>
+                <div>加速: 2倍速 (50ms/帧)</div>
+                <div><strong>朝向控制：</strong></div>
+                <div>上/左: 原图 | 右: 水平翻转</div>
+                <div>下: 垂直翻转+左旋60°</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 图片资源状态</h4>
+            <div id="imageStats">
+                <!-- 图片状态将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="test-info" id="testInfo">
+            <h4>🎬 动画系统监控</h4>
+            <div id="animationInfo">
+                <div class="animation-info">等待游戏加载...</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试方法：</strong> 使用WASD或方向键移动，Shift加速，观察动画效果
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.player) {
+                    console.log('精灵动画和图片资源测试模式启动');
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                    updateImageStats();
+                }
+            }, 3000); // 给图片加载更多时间
+        });
+
+        // 测试移动动画
+        function testMovement() {
+            if (!game || !game.player) return;
+            
+            // 模拟移动输入
+            game.input.keys['KeyW'] = true;
+            setTimeout(() => {
+                game.input.keys['KeyW'] = false;
+                game.input.keys['KeyD'] = true;
+                setTimeout(() => {
+                    game.input.keys['KeyD'] = false;
+                    game.input.keys['KeyS'] = true;
+                    setTimeout(() => {
+                        game.input.keys['KeyS'] = false;
+                        game.input.keys['KeyA'] = true;
+                        setTimeout(() => {
+                            game.input.keys['KeyA'] = false;
+                        }, 1000);
+                    }, 1000);
+                }, 1000);
+            }, 1000);
+            
+            console.log('开始测试移动动画（上→右→下→左）');
+        }
+
+        // 测试加速动画
+        function testBoost() {
+            if (!game || !game.player) return;
+            
+            // 模拟加速移动
+            game.input.keys['KeyW'] = true;
+            game.input.keys['ShiftLeft'] = true;
+            
+            setTimeout(() => {
+                game.input.keys['KeyW'] = false;
+                game.input.keys['ShiftLeft'] = false;
+            }, 3000);
+            
+            console.log('开始测试加速动画（3秒）');
+        }
+
+        // 测试方向变换
+        function testDirection() {
+            if (!game || !game.player) return;
+            
+            const directions = ['KeyW', 'KeyD', 'KeyS', 'KeyA'];
+            let currentDir = 0;
+            
+            const switchDirection = () => {
+                // 清除所有方向键
+                directions.forEach(key => game.input.keys[key] = false);
+                
+                if (currentDir < directions.length) {
+                    game.input.keys[directions[currentDir]] = true;
+                    currentDir++;
+                    setTimeout(() => {
+                        game.input.keys[directions[currentDir - 1]] = false;
+                        setTimeout(switchDirection, 500);
+                    }, 1500);
+                }
+            };
+            
+            switchDirection();
+            console.log('开始测试方向变换');
+        }
+
+        // 重新加载图片
+        function reloadImages() {
+            if (!game) return;
+            
+            game.imagesLoaded = false;
+            game.images = {};
+            game.loadImages().then(() => {
+                console.log('图片重新加载完成');
+            }).catch(error => {
+                console.error('图片重新加载失败:', error);
+            });
+        }
+
+        // 更新图片状态统计
+        function updateImageStats() {
+            if (!game) return;
+            
+            const statsDiv = document.getElementById('imageStats');
+            
+            const imageKeys = Object.keys(game.images);
+            const heroFrames = imageKeys.filter(key => key.startsWith('hero_idle_')).length;
+            const fishImages = imageKeys.filter(key => key.startsWith('fish_')).length;
+            const otherImages = imageKeys.length - heroFrames - fishImages;
+            
+            statsDiv.innerHTML = `
+                <div class="animation-info ${game.imagesLoaded ? 'hero-info' : 'loading-info'}">
+                    <div><strong>📸 图片加载状态</strong></div>
+                    <div>总图片数: ${imageKeys.length}</div>
+                    <div>加载状态: ${game.imagesLoaded ? '完成' : '加载中...'}</div>
+                </div>
+                <div class="animation-info hero-info">
+                    <div><strong>🦸 主角动画帧</strong></div>
+                    <div>帧数: ${heroFrames}/22</div>
+                    <div>状态: ${heroFrames === 22 ? '完整' : '不完整'}</div>
+                </div>
+                <div class="animation-info fish-info">
+                    <div><strong>🐟 鱼类图片</strong></div>
+                    <div>数量: ${fishImages}/3</div>
+                    <div>类型: 小鱼、大鱼、章鱼</div>
+                </div>
+                <div class="animation-info obstacle-info">
+                    <div><strong>🪨 其他资源</strong></div>
+                    <div>背景: ${game.images.background ? '✓' : '✗'}</div>
+                    <div>障碍物: ${game.images.obstacle ? '✓' : '✗'}</div>
+                </div>
+            `;
+            
+            // 继续更新
+            setTimeout(updateImageStats, 1000);
+        }
+
+        // 更新动画系统监控
+        function updateStatus() {
+            if (!game || !game.player) return;
+            
+            const animationInfoDiv = document.getElementById('animationInfo');
+            const player = game.player;
+            
+            animationInfoDiv.innerHTML = `
+                <div class="animation-info hero-info">
+                    <div><strong>🎬 主角动画状态</strong></div>
+                    <div>当前帧: ${player.animation.currentFrame}/21</div>
+                    <div>朝向: ${player.animation.direction}</div>
+                    <div>移动中: ${player.animation.isMoving ? '是' : '否'}</div>
+                    <div>帧延迟: ${player.animation.frameDelay}ms</div>
+                </div>
+                <div class="animation-info">
+                    <div><strong>🎮 玩家状态</strong></div>
+                    <div>位置: (${Math.round(player.x)}, ${Math.round(player.y)})</div>
+                    <div>速度: ${Math.round(Math.sqrt(player.vx * player.vx + player.vy * player.vy) * 10) / 10}</div>
+                    <div>加速中: ${player.isBoosting ? '是' : '否'}</div>
+                    <div>体力: ${Math.round(player.stamina)}/${player.maxStamina}</div>
+                </div>
+                <div class="animation-info">
+                    <div><strong>🖼️ 渲染信息</strong></div>
+                    <div>图片模式: ${game.imagesLoaded ? '启用' : '备用绘制'}</div>
+                    <div>当前图片: hero_idle_${player.animation.currentFrame}</div>
+                    <div>图片存在: ${game.images[`hero_idle_${player.animation.currentFrame}`] ? '是' : '否'}</div>
+                </div>
+            `;
+            
+            // 继续更新
+            setTimeout(updateStatus, 200);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>海中障碍物测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 300px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🌊 海中障碍物测试</h3>
+            <p><strong>障碍物类型：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>🪨 海底珊瑚礁（橙色圆形）</li>
+                <li>🌿 海底海草（绿色矩形）</li>
+                <li>🟢 漂浮海藻团（绿色圆形）</li>
+                <li>⬜ 海中岩石（灰色矩形）</li>
+                <li>🚢 沉船残骸（棕色大型）</li>
+                <li>🟤 海面漂浮物（棕色圆形）</li>
+            </ul>
+            <p><strong>测试功能：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>C键 - 切换碰撞盒显示</li>
+                <li>WASD - 移动测试碰撞</li>
+                <li>鼠标点击 - 射击测试</li>
+            </ul>
+        </div>
+
+        <div class="controls">
+            <strong>控制:</strong> WASD移动 | 鼠标瞄准射击 | C键显示碰撞盒
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例，但启用碰撞盒显示
+            window.game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成后启用碰撞盒显示
+            setTimeout(() => {
+                if (window.game && window.game.settings) {
+                    window.game.settings.showCollisionBoxes = true;
+                    console.log('障碍物测试模式：碰撞盒显示已启用');
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>水面出生测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 200px;
+            z-index: 100;
+        }
+
+        .depth-indicator {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            z-index: 100;
+        }
+
+        .surface-zone {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .deep-zone {
+            color: #2196F3;
+        }
+
+        .danger-zone {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🏊 水面出生测试</h3>
+            <p><strong>测试功能：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 角色在水面附近出生</li>
+                <li>✅ 水面视觉效果</li>
+                <li>✅ 阳光射线效果</li>
+                <li>✅ 水面氧气恢复</li>
+                <li>✅ 深度指示器</li>
+                <li>✅ 真实潜水体验</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="respawnPlayer()">重新出生</button>
+                <button class="test-button" onclick="teleportToSurface()">传送到水面</button>
+                <button class="test-button" onclick="teleportToDeep()">传送到深海</button>
+            </div>
+        </div>
+
+        <div class="depth-indicator" id="depthIndicator">
+            <h4>📏 深度指示</h4>
+            <div>当前深度: <span id="currentDepth">0m</span></div>
+            <div>区域: <span id="currentZone" class="surface-zone">水面</span></div>
+            <div>氧气状态: <span id="oxygenStatus">恢复中</span></div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 玩家状态</h4>
+            <div>位置: <span id="playerPosition">-</span></div>
+            <div>氧气: <span id="playerOxygen">100%</span></div>
+            <div>体力: <span id="playerStamina">100%</span></div>
+            <div>在水面: <span id="atSurface">是</span></div>
+        </div>
+
+        <div class="controls">
+            <strong>控制:</strong> WASD移动 | 观察水面效果和氧气变化
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = false;
+                    console.log('水面出生测试模式启动');
+                    console.log('玩家出生位置:', game.player.x, game.player.y);
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                }
+            }, 2000);
+        });
+
+        // 重新出生玩家
+        function respawnPlayer() {
+            if (!game) return;
+            
+            console.log('重新生成玩家...');
+            const newSpawn = game.findSafeSpawnPosition(game.gameWidth / 2, game.gameHeight * 0.15, 15);
+            
+            if (newSpawn) {
+                game.player.x = newSpawn.x;
+                game.player.y = newSpawn.y;
+                game.player.vx = 0;
+                game.player.vy = 0;
+                game.player.oxygen = game.player.maxOxygen;
+                game.player.stamina = game.player.maxStamina;
+                console.log('玩家重新出生在水面附近:', Math.round(newSpawn.x), Math.round(newSpawn.y));
+            }
+        }
+
+        // 传送到水面
+        function teleportToSurface() {
+            if (!game) return;
+            
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * 0.08; // 非常接近水面
+            game.player.vx = 0;
+            game.player.vy = 0;
+            console.log('传送到水面');
+        }
+
+        // 传送到深海
+        function teleportToDeep() {
+            if (!game) return;
+            
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * 0.7; // 深海区域
+            game.player.vx = 0;
+            game.player.vy = 0;
+            console.log('传送到深海');
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            if (!game || !game.player) return;
+            
+            const player = game.player;
+            
+            // 更新玩家位置
+            document.getElementById('playerPosition').textContent = 
+                `(${Math.round(player.x)}, ${Math.round(player.y)})`;
+            
+            // 更新氧气
+            const oxygenPercent = Math.round((player.oxygen / player.maxOxygen) * 100);
+            document.getElementById('playerOxygen').textContent = oxygenPercent + '%';
+            
+            // 更新体力
+            const staminaPercent = Math.round((player.stamina / player.maxStamina) * 100);
+            document.getElementById('playerStamina').textContent = staminaPercent + '%';
+            
+            // 更新水面状态
+            document.getElementById('atSurface').textContent = player.isAtSurface ? '是' : '否';
+            
+            // 更新深度指示器
+            const depthPercent = (player.y / game.gameHeight) * 100;
+            const depthMeters = Math.round(depthPercent * 2); // 模拟深度（米）
+            document.getElementById('currentDepth').textContent = depthMeters + 'm';
+            
+            // 更新区域指示
+            const zoneSpan = document.getElementById('currentZone');
+            const oxygenStatusSpan = document.getElementById('oxygenStatus');
+            
+            if (player.y < game.gameHeight * 0.1) {
+                zoneSpan.textContent = '水面';
+                zoneSpan.className = 'surface-zone';
+                oxygenStatusSpan.textContent = '快速恢复';
+                oxygenStatusSpan.style.color = '#4CAF50';
+            } else if (player.y < game.gameHeight * 0.2) {
+                zoneSpan.textContent = '浅水区';
+                zoneSpan.className = 'surface-zone';
+                oxygenStatusSpan.textContent = '恢复中';
+                oxygenStatusSpan.style.color = '#8BC34A';
+            } else if (player.y < game.gameHeight * 0.6) {
+                zoneSpan.textContent = '中层水域';
+                zoneSpan.className = 'deep-zone';
+                oxygenStatusSpan.textContent = '消耗中';
+                oxygenStatusSpan.style.color = '#FF9800';
+            } else {
+                zoneSpan.textContent = '深海';
+                zoneSpan.className = 'danger-zone';
+                oxygenStatusSpan.textContent = '快速消耗';
+                oxygenStatusSpan.style.color = '#f44336';
+            }
+            
+            // 继续更新
+            setTimeout(updateStatus, 100);
+        }
+    </script>
+</body>
+</html>

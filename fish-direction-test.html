@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鱼类朝向和复活测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            color: white;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .panel {
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid #4CAF50;
+        }
+        button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            margin: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        .danger {
+            background: #f44336;
+        }
+        .danger:hover {
+            background: #da190b;
+        }
+        .info {
+            background: #2196F3;
+        }
+        .info:hover {
+            background: #1976D2;
+        }
+        #gameCanvas {
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.5);
+        }
+        .status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .status-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .status-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        #log {
+            background: #000;
+            padding: 15px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            border: 1px solid #333;
+        }
+        .back-link {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← 返回游戏</a>
+        
+        <h1>🐟 鱼类朝向和复活测试</h1>
+        
+        <div class="panel">
+            <h3>🎮 游戏画布</h3>
+            <canvas id="gameCanvas" width="800" height="400"></canvas>
+        </div>
+        
+        <div class="panel">
+            <h3>📊 游戏状态</h3>
+            <div class="status">
+                <div class="status-item">
+                    <div>当前金币</div>
+                    <div class="status-value" id="coins">加载中...</div>
+                </div>
+                <div class="status-item">
+                    <div>氧气值</div>
+                    <div class="status-value" id="oxygen">加载中...</div>
+                </div>
+                <div class="status-item">
+                    <div>游戏状态</div>
+                    <div class="status-value" id="gameState">加载中...</div>
+                </div>
+                <div class="status-item">
+                    <div>昏厥次数</div>
+                    <div class="status-value" id="unconsciousCount">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h3>🧪 测试操作</h3>
+            <div>
+                <h4>金币测试</h4>
+                <button onclick="setCoins(15)">设置15金币 (不足复活)</button>
+                <button onclick="setCoins(25)">设置25金币 (刚好够复活)</button>
+                <button onclick="setCoins(50)">设置50金币 (充足)</button>
+                <button onclick="setCoins(100)">设置100金币</button>
+            </div>
+            <div>
+                <h4>复活测试</h4>
+                <button class="danger" onclick="forceUnconscious()">强制昏厥</button>
+                <button class="info" onclick="setOxygen(0)">氧气归零</button>
+                <button onclick="setOxygen(100)">恢复氧气</button>
+            </div>
+            <div>
+                <h4>鱼类测试</h4>
+                <button onclick="regenerateFish()">重新生成鱼类</button>
+                <button onclick="observeFishDirection()">观察鱼类朝向</button>
+            </div>
+            <div>
+                <h4>其他操作</h4>
+                <button class="danger" onclick="clearLog()">清空日志</button>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h3>🐛 调试日志</h3>
+            <div id="log">等待日志输出...</div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let logContent = '';
+
+        // 重写console方法来捕获日志
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLog('[LOG] ' + args.join(' '));
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLog('[ERROR] ' + args.join(' '));
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLog('[WARN] ' + args.join(' '));
+        };
+
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logContent += `[${timestamp}] ${message}\n`;
+            const logElement = document.getElementById('log');
+            logElement.textContent = logContent;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            logContent = '';
+            document.getElementById('log').textContent = '日志已清空\n';
+        }
+
+        // 初始化游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('🚀 开始初始化游戏...');
+            
+            try {
+                game = new UnderwaterHuntingGame();
+                addLog('✅ 游戏实例创建成功');
+                
+                setTimeout(() => {
+                    if (game && game.player) {
+                        addLog('✅ 游戏初始化完成');
+                        addLog('🐟 小鱼朝向已修复：图片朝向+180度');
+                        addLog('💰 复活判断已修复：金币<20时才游戏结束');
+                        updateStatus();
+                    } else {
+                        addLog('❌ 游戏初始化失败 - 玩家对象未创建');
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                addLog('❌ 游戏创建失败: ' + error.message);
+            }
+        });
+
+        function updateStatus() {
+            if (!game) return;
+            
+            try {
+                document.getElementById('coins').textContent = game.coins || '0';
+                document.getElementById('oxygen').textContent = Math.round(game.player?.oxygen || 0);
+                document.getElementById('gameState').textContent = game.gameState || 'unknown';
+                document.getElementById('unconsciousCount').textContent = game.gameStats?.unconsciousCount || 0;
+            } catch (error) {
+                addLog('❌ 状态更新失败: ' + error.message);
+            }
+            
+            setTimeout(updateStatus, 500);
+        }
+
+        function setCoins(amount) {
+            if (!game) {
+                addLog('❌ 游戏未初始化');
+                return;
+            }
+            
+            try {
+                addLog(`💰 设置金币: ${game.coins} -> ${amount}`);
+                game.coins = amount;
+                addLog(`✅ 金币设置成功: ${game.coins}`);
+            } catch (error) {
+                addLog('❌ 设置金币失败: ' + error.message);
+            }
+        }
+
+        function forceUnconscious() {
+            if (!game) {
+                addLog('❌ 游戏未初始化');
+                return;
+            }
+            
+            try {
+                addLog('💀 强制触发昏厥状态...');
+                game.player.oxygen = 0;
+                game.triggerUnconsciousness();
+                addLog('✅ 昏厥状态已触发');
+            } catch (error) {
+                addLog('❌ 触发昏厥失败: ' + error.message);
+            }
+        }
+
+        function setOxygen(amount) {
+            if (!game) {
+                addLog('❌ 游戏未初始化');
+                return;
+            }
+            
+            try {
+                addLog(`🫁 设置氧气: ${Math.round(game.player.oxygen)} -> ${amount}`);
+                game.player.oxygen = amount;
+                addLog(`✅ 氧气设置成功: ${Math.round(game.player.oxygen)}`);
+            } catch (error) {
+                addLog('❌ 设置氧气失败: ' + error.message);
+            }
+        }
+
+        function regenerateFish() {
+            if (!game) {
+                addLog('❌ 游戏未初始化');
+                return;
+            }
+            
+            try {
+                addLog('🐟 重新生成鱼类...');
+                game.createFishes();
+                addLog(`✅ 鱼类重新生成完成，共${game.fishes.length}条鱼`);
+            } catch (error) {
+                addLog('❌ 重新生成鱼类失败: ' + error.message);
+            }
+        }
+
+        function observeFishDirection() {
+            if (!game) {
+                addLog('❌ 游戏未初始化');
+                return;
+            }
+            
+            try {
+                addLog('👁️ 观察鱼类朝向信息:');
+                game.fishes.forEach((fish, index) => {
+                    const angle = fish.angle * 180 / Math.PI;
+                    const vx = fish.vx.toFixed(2);
+                    const vy = fish.vy.toFixed(2);
+                    addLog(`  鱼${index+1}(${fish.type}): 角度=${angle.toFixed(1)}°, 速度=(${vx},${vy})`);
+                });
+            } catch (error) {
+                addLog('❌ 观察鱼类朝向失败: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

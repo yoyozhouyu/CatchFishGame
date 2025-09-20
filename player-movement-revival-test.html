@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>玩家移动范围和复活功能测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #001122;
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 15%, #191970 55%, #000080 100%);
+        }
+        
+        .test-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            min-width: 250px;
+            z-index: 1000;
+        }
+        
+        .test-button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #45a049;
+        }
+        
+        .test-button.danger {
+            background: #f44336;
+        }
+        
+        .test-button.danger:hover {
+            background: #da190b;
+        }
+        
+        .info-display {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .zone-indicator {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        
+        .controls-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="test-panel">
+            <h3 style="margin-top: 0;">🧪 移动范围和复活测试</h3>
+            
+            <div class="info-display">
+                <div><strong>玩家位置:</strong></div>
+                <div>X: <span id="playerX">0</span></div>
+                <div>Y: <span id="playerY">0</span></div>
+                <div>深度: <span id="playerDepth">0</span>%</div>
+                <div>氧气: <span id="playerOxygen">100</span>%</div>
+                <div>体力: <span id="playerStamina">100</span>%</div>
+                <div>状态: <span id="gameState">playing</span></div>
+            </div>
+            
+            <button class="test-button" onclick="testMoveToSurface()">移动到水面</button>
+            <button class="test-button" onclick="testMoveToBottom()">移动到第一层底部</button>
+            <button class="test-button" onclick="testMoveToDeepest()">移动到最深处</button>
+            <button class="test-button danger" onclick="testDrainOxygen()">快速消耗氧气</button>
+            <button class="test-button danger" onclick="testTriggerUnconsciousness()">直接触发昏厥</button>
+            <button class="test-button" onclick="testRestoreResources()">恢复资源</button>
+            
+            <div class="info-display">
+                <div><strong>移动范围测试:</strong></div>
+                <div>水面: 15% (Y: <span id="surfaceY">0</span>)</div>
+                <div>第一层底部: 55% (Y: <span id="bottomY">0</span>)</div>
+                <div>当前可达最深: <span id="maxDepth">55</span>%</div>
+            </div>
+        </div>
+        
+        <div class="zone-indicator">
+            <div><strong>🌊 深度区域指示</strong></div>
+            <div style="color: #87CEEB;">水面层 (0-15%)</div>
+            <div style="color: #4682B4;">浅水层 (15-25%)</div>
+            <div style="color: #191970;">中水层 (25-55%)</div>
+            <div style="color: #000080;">深水层 (55%+)</div>
+        </div>
+        
+        <div class="controls-info">
+            <div><strong>🎮 控制说明</strong></div>
+            <div>WASD/方向键: 移动</div>
+            <div>Shift: 加速</div>
+            <div>鼠标: 射击</div>
+            <div>空格: 拉拽鱼线</div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game;
+        
+        // 初始化游戏
+        async function initGame() {
+            const canvas = document.getElementById('gameCanvas');
+            game = new Game(canvas);
+            await game.init();
+            
+            // 更新界面显示
+            updateDisplay();
+            setInterval(updateDisplay, 100);
+        }
+        
+        // 更新显示信息
+        function updateDisplay() {
+            if (!game || !game.player) return;
+            
+            const player = game.player;
+            const depthPercent = (player.y / game.gameHeight * 100).toFixed(1);
+            
+            document.getElementById('playerX').textContent = Math.round(player.x);
+            document.getElementById('playerY').textContent = Math.round(player.y);
+            document.getElementById('playerDepth').textContent = depthPercent;
+            document.getElementById('playerOxygen').textContent = Math.round(player.oxygen);
+            document.getElementById('playerStamina').textContent = Math.round(player.stamina);
+            document.getElementById('gameState').textContent = game.gameState;
+            
+            document.getElementById('surfaceY').textContent = Math.round(game.gameHeight * 0.15);
+            document.getElementById('bottomY').textContent = Math.round(game.gameHeight * 0.55);
+            document.getElementById('maxDepth').textContent = (game.getMaxUnlockedDepth() * 100).toFixed(0);
+        }
+        
+        // 测试函数
+        function testMoveToSurface() {
+            if (!game || !game.player) return;
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * 0.16; // 水面附近
+            game.player.vx = 0;
+            game.player.vy = 0;
+            console.log('玩家移动到水面');
+        }
+        
+        function testMoveToBottom() {
+            if (!game || !game.player) return;
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * 0.54; // 第一层底部
+            game.player.vx = 0;
+            game.player.vy = 0;
+            console.log('玩家移动到第一层底部');
+        }
+        
+        function testMoveToDeepest() {
+            if (!game || !game.player) return;
+            const maxDepth = game.getMaxUnlockedDepth();
+            game.player.x = game.gameWidth / 2;
+            game.player.y = game.gameHeight * (maxDepth - 0.01); // 最深处
+            game.player.vx = 0;
+            game.player.vy = 0;
+            console.log('玩家移动到最深处');
+        }
+        
+        function testDrainOxygen() {
+            if (!game || !game.player) return;
+            game.player.oxygen = 5; // 设置为低氧状态
+            console.log('氧气设置为5%');
+        }
+        
+        function testTriggerUnconsciousness() {
+            if (!game || !game.player) return;
+            game.player.oxygen = 0;
+            game.player.triggerUnconsciousness();
+            console.log('直接触发昏厥');
+        }
+        
+        function testRestoreResources() {
+            if (!game || !game.player) return;
+            game.player.oxygen = game.player.maxOxygen;
+            game.player.stamina = game.player.maxStamina;
+            console.log('资源已恢复');
+        }
+        
+        // 启动游戏
+        initGame();
+    </script>
+</body>
+</html>

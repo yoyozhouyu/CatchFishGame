@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>主角体力条和鱼类障碍物避让测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 280px;
+            z-index: 100;
+        }
+
+        .player-status {
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid #2196F3;
+        }
+
+        .fish-status {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .fast-swimming {
+            border-left: 4px solid #ff9800;
+            background: rgba(255, 152, 0, 0.2);
+        }
+
+        .avoiding-obstacle {
+            border-left: 4px solid #9c27b0;
+            background: rgba(156, 39, 176, 0.2);
+        }
+
+        .normal {
+            border-left: 4px solid #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .test-info {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            width: 250px;
+            z-index: 100;
+        }
+
+        .feature-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .implemented {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .testing {
+            border-left: 4px solid #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🎯 主角体力条和鱼类障碍物避让测试</h3>
+            <p><strong>新功能特点：</strong></p>
+            <ul style="margin: 10px 0; padding-left: 20px; font-size: 12px;">
+                <li>✅ 主角体力条挂在身上</li>
+                <li>✅ 体力满时隐藏，不满时显示</li>
+                <li>✅ 鱼类快速游动时避开障碍物</li>
+                <li>✅ 碰到障碍物时改变方向</li>
+                <li>✅ 智能路径选择算法</li>
+            </ul>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="drainPlayerStamina()">消耗主角体力</button>
+                <button class="test-button" onclick="restorePlayerStamina()">恢复主角体力</button>
+                <button class="test-button" onclick="shootFishNearObstacles()">射击障碍物附近的鱼</button>
+                <button class="test-button" onclick="addMoreObstacles()">添加更多障碍物</button>
+            </div>
+            <div style="margin: 10px 0; font-size: 12px;">
+                <div><strong>测试重点：</strong></div>
+                <div>• 主角体力条跟随显示</div>
+                <div>• 鱼类智能避开障碍物</div>
+            </div>
+        </div>
+
+        <div class="status-panel" id="statusPanel">
+            <h4>📊 状态监控</h4>
+            <div id="playerStatus">
+                <!-- 主角状态将在这里显示 -->
+            </div>
+            <div id="fishStatusList">
+                <!-- 鱼类状态将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="test-info" id="testInfo">
+            <h4>🧪 功能验证</h4>
+            <div class="feature-item implemented">
+                <strong>✅ 主角体力条跟随</strong><br>
+                体力条显示在主角上方
+            </div>
+            <div class="feature-item implemented">
+                <strong>✅ 按需显示</strong><br>
+                满血时隐藏，受伤时显示
+            </div>
+            <div class="feature-item testing">
+                <strong>🧪 障碍物避让</strong><br>
+                鱼类智能避开障碍物
+            </div>
+            <div class="feature-item testing">
+                <strong>🧪 方向改变</strong><br>
+                碰撞时自动改变游动方向
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>测试方法：</strong> 消耗主角体力观察体力条显示 → 射击障碍物附近的鱼观察避让行为
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let lastDirectionChanges = new Map();
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = true; // 显示碰撞框便于观察
+                    console.log('主角体力条和鱼类障碍物避让测试模式启动');
+                    
+                    // 开始状态更新循环
+                    updateStatus();
+                }
+            }, 2000);
+        });
+
+        // 消耗主角体力
+        function drainPlayerStamina() {
+            if (!game || !game.player) return;
+            
+            game.player.stamina = Math.max(0, game.player.stamina - 30);
+            console.log(`主角体力减少30，当前: ${Math.round(game.player.stamina)}/${game.player.maxStamina}`);
+        }
+
+        // 恢复主角体力
+        function restorePlayerStamina() {
+            if (!game || !game.player) return;
+            
+            game.player.stamina = game.player.maxStamina;
+            console.log(`主角体力已恢复满`);
+        }
+
+        // 射击障碍物附近的鱼
+        function shootFishNearObstacles() {
+            if (!game || !game.fishes || !game.obstacles) return;
+            
+            // 找到距离障碍物最近的鱼
+            let targetFish = null;
+            let minDistance = Infinity;
+            
+            game.fishes.forEach(fish => {
+                if (!fish.isCaught) {
+                    game.obstacles.forEach(obstacle => {
+                        const dx = fish.x - obstacle.x;
+                        const dy = fish.y - obstacle.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            targetFish = fish;
+                        }
+                    });
+                }
+            });
+            
+            if (targetFish) {
+                // 射击这条鱼
+                const dx = targetFish.x - game.player.x;
+                const dy = targetFish.y - game.player.y;
+                
+                game.input.mouse.x = game.player.x + dx;
+                game.input.mouse.y = game.player.y + dy;
+                
+                game.handleShoot();
+                console.log(`射击距离障碍物最近的${targetFish.type}鱼，观察避让行为`);
+            }
+        }
+
+        // 添加更多障碍物
+        function addMoreObstacles() {
+            if (!game) return;
+            
+            // 在随机位置添加几个障碍物
+            for (let i = 0; i < 3; i++) {
+                const x = Math.random() * (game.gameWidth - 100) + 50;
+                const y = Math.random() * (game.gameHeight - 200) + 100;
+                const radius = 20 + Math.random() * 30;
+                
+                game.obstacles.push({
+                    type: 'circle',
+                    x: x,
+                    y: y,
+                    radius: radius
+                });
+            }
+            
+            console.log('添加了3个新障碍物');
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            if (!game) return;
+            
+            // 更新主角状态
+            const playerStatusDiv = document.getElementById('playerStatus');
+            const playerStaminaPercent = Math.round((game.player.stamina / game.player.maxStamina) * 100);
+            const staminaBarVisible = game.player.stamina < game.player.maxStamina;
+            
+            playerStatusDiv.innerHTML = `
+                <div class="player-status">
+                    <div><strong>🎯 主角状态</strong></div>
+                    <div>体力: ${Math.round(game.player.stamina)}/${game.player.maxStamina} (${playerStaminaPercent}%)</div>
+                    <div>体力条显示: ${staminaBarVisible ? '✅ 显示' : '❌ 隐藏'}</div>
+                    <div>位置: (${Math.round(game.player.x)}, ${Math.round(game.player.y)})</div>
+                </div>
+            `;
+            
+            // 更新鱼类状态
+            if (game.fishes) {
+                const statusList = document.getElementById('fishStatusList');
+                statusList.innerHTML = '';
+                
+                game.fishes.forEach((fish, index) => {
+                    const fishDiv = document.createElement('div');
+                    
+                    // 检查是否刚改变了方向
+                    const fishKey = `${fish.type}_${index}`;
+                    const currentTime = Date.now();
+                    const lastChange = lastDirectionChanges.get(fishKey) || 0;
+                    const recentlyChanged = (currentTime - lastChange) < 2000; // 2秒内
+                    
+                    // 根据状态设置样式
+                    if (recentlyChanged && fish.isFastSwimming) {
+                        fishDiv.className = 'fish-status avoiding-obstacle';
+                    } else if (fish.isFastSwimming) {
+                        fishDiv.className = 'fish-status fast-swimming';
+                    } else {
+                        fishDiv.className = 'fish-status normal';
+                    }
+                    
+                    const staminaPercent = Math.round((fish.stamina / fish.maxStamina) * 100);
+                    
+                    let statusText = '自由游动';
+                    if (fish.isFastSwimming) {
+                        statusText = recentlyChanged ? '🔄 避让障碍物' : '🏃 快速游动';
+                    } else if (fish.isExhausted) {
+                        statusText = '😴 疲劳状态';
+                    } else if (fish.isCaught) {
+                        statusText = '🎣 被捕获';
+                    }
+                    
+                    fishDiv.innerHTML = `
+                        <div><strong>${fish.type}鱼 #${index + 1}</strong></div>
+                        <div>状态: ${statusText}</div>
+                        <div>体力: ${Math.round(fish.stamina)}/${fish.maxStamina} (${staminaPercent}%)</div>
+                        <div>方向: (${fish.fastSwimDirection.x.toFixed(2)}, ${fish.fastSwimDirection.y.toFixed(2)})</div>
+                    `;
+                    
+                    statusList.appendChild(fishDiv);
+                });
+            }
+            
+            // 继续更新
+            setTimeout(updateStatus, 300);
+        }
+
+        // 监听方向改变事件（通过控制台日志检测）
+        const originalConsoleLog = console.log;
+        console.log = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('改变快速游动方向')) {
+                // 记录方向改变时间
+                if (game && game.fishes) {
+                    game.fishes.forEach((fish, index) => {
+                        if (fish.isFastSwimming) {
+                            const fishKey = `${fish.type}_${index}`;
+                            lastDirectionChanges.set(fishKey, Date.now());
+                        }
+                    });
+                }
+            }
+            originalConsoleLog.apply(console, args);
+        };
+    </script>
+</body>
+</html>

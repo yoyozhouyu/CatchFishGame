@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>移动控制测试验证</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            min-height: 100vh;
+            touch-action: none;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .test-area {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-canvas {
+            width: 100%;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            touch-action: none;
+        }
+
+        .controls-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .control-section {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .virtual-joystick {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 20px auto;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            touch-action: none;
+        }
+
+        .joystick-knob {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid white;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease;
+            touch-action: none;
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .test-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+        }
+
+        .test-button:hover,
+        .test-button:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .stats-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .device-info {
+            background: rgba(52, 152, 219, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .controls-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="demo.html" class="back-button">← 返回演示页面</a>
+    
+    <div class="container">
+        <h1>🎮 移动控制测试验证</h1>
+        
+        <div class="device-info">
+            <h3>📱 设备信息</h3>
+            <p>设备类型: <span id="deviceType">检测中...</span></p>
+            <p>屏幕尺寸: <span id="screenSize">检测中...</span></p>
+            <p>触控支持: <span id="touchSupport">检测中...</span></p>
+            <p>用户代理: <span id="userAgent">检测中...</span></p>
+        </div>
+
+        <div class="test-area">
+            <h2>🎯 移动测试区域</h2>
+            <canvas class="game-canvas" id="gameCanvas"></canvas>
+            
+            <div class="stats-display">
+                <div class="stat-item">
+                    <div>玩家X</div>
+                    <div class="stat-value" id="playerX">0</div>
+                </div>
+                <div class="stat-item">
+                    <div>玩家Y</div>
+                    <div class="stat-value" id="playerY">0</div>
+                </div>
+                <div class="stat-item">
+                    <div>速度</div>
+                    <div class="stat-value" id="playerSpeed">0.0</div>
+                </div>
+                <div class="stat-item">
+                    <div>输入类型</div>
+                    <div class="stat-value" id="inputType">无</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="control-section">
+                <h3>⌨️ 键盘控制 (PC)</h3>
+                <p>WASD键控制移动</p>
+                <p>Shift键加速</p>
+                <p>状态: <span id="keyboardStatus">等待输入...</span></p>
+            </div>
+            
+            <div class="control-section">
+                <h3>🖱️ 鼠标控制 (PC)</h3>
+                <p>鼠标移动控制方向</p>
+                <p>点击画布移动</p>
+                <p>状态: <span id="mouseStatus">等待输入...</span></p>
+            </div>
+            
+            <div class="control-section">
+                <h3>👆 触控控制 (移动端)</h3>
+                <div class="virtual-joystick" id="virtualJoystick">
+                    <div class="joystick-knob" id="joystickKnob"></div>
+                </div>
+                <p>状态: <span id="touchStatus">等待输入...</span></p>
+            </div>
+        </div>
+
+        <div class="test-buttons">
+            <button class="test-button" onclick="resetPlayer()">重置位置</button>
+            <button class="test-button" onclick="toggleTrail()">切换轨迹</button>
+            <button class="test-button" onclick="clearCanvas()">清除画布</button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏变量
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设置画布
+        function setupCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        
+        setupCanvas();
+        window.addEventListener('resize', setupCanvas);
+        
+        // 游戏状态
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            vx: 0,
+            vy: 0,
+            radius: 15,
+            trail: []
+        };
+        
+        const input = {
+            keys: {},
+            mouse: { x: 0, y: 0, pressed: false },
+            joystick: { active: false, x: 0, y: 0, centerX: 0, centerY: 0 },
+            currentType: 'none'
+        };
+        
+        let showTrail = true;
+        
+        // 设备检测
+        function detectDevice() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            
+            document.getElementById('deviceType').textContent = isMobile ? '移动设备' : 'PC设备';
+            document.getElementById('screenSize').textContent = `${screen.width}x${screen.height}`;
+            document.getElementById('touchSupport').textContent = hasTouch ? '支持' : '不支持';
+            document.getElementById('userAgent').textContent = navigator.userAgent.substring(0, 50) + '...';
+        }
+        
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            input.keys[e.code] = true;
+            input.currentType = 'keyboard';
+            document.getElementById('keyboardStatus').textContent = '✅ 活跃';
+            document.getElementById('inputType').textContent = '键盘';
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            input.keys[e.code] = false;
+        });
+        
+        // 鼠标事件
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            input.mouse.x = e.clientX - rect.left;
+            input.mouse.y = e.clientY - rect.top;
+            input.currentType = 'mouse';
+            document.getElementById('mouseStatus').textContent = '✅ 活跃';
+            document.getElementById('inputType').textContent = '鼠标';
+        });
+        
+        canvas.addEventListener('mousedown', (e) => {
+            input.mouse.pressed = true;
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+            input.mouse.pressed = false;
+        });
+        
+        // 虚拟摇杆设置
+        function setupVirtualJoystick() {
+            const joystick = document.getElementById('virtualJoystick');
+            const knob = document.getElementById('joystickKnob');
+            const rect = joystick.getBoundingClientRect();
+            
+            input.joystick.centerX = rect.left + rect.width / 2;
+            input.joystick.centerY = rect.top + rect.height / 2;
+            
+            function handleJoystickMove(clientX, clientY) {
+                const deltaX = clientX - input.joystick.centerX;
+                const deltaY = clientY - input.joystick.centerY;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                const maxDistance = 35;
+                
+                if (distance <= maxDistance) {
+                    input.joystick.x = deltaX / maxDistance;
+                    input.joystick.y = deltaY / maxDistance;
+                    knob.style.transform = `translate(${deltaX - 25}px, ${deltaY - 25}px)`;
+                } else {
+                    const angle = Math.atan2(deltaY, deltaX);
+                    input.joystick.x = Math.cos(angle);
+                    input.joystick.y = Math.sin(angle);
+                    knob.style.transform = `translate(${Math.cos(angle) * maxDistance - 25}px, ${Math.sin(angle) * maxDistance - 25}px)`;
+                }
+                
+                input.currentType = 'touch';
+                document.getElementById('touchStatus').textContent = '✅ 活跃';
+                document.getElementById('inputType').textContent = '触控';
+            }
+            
+            function resetJoystick() {
+                input.joystick.active = false;
+                input.joystick.x = 0;
+                input.joystick.y = 0;
+                knob.style.transform = 'translate(-50%, -50%)';
+            }
+            
+            // 触摸事件
+            joystick.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                input.joystick.active = true;
+                const touch = e.touches[0];
+                handleJoystickMove(touch.clientX, touch.clientY);
+            });
+            
+            joystick.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (input.joystick.active) {
+                    const touch = e.touches[0];
+                    handleJoystickMove(touch.clientX, touch.clientY);
+                }
+            });
+            
+            joystick.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                resetJoystick();
+            });
+            
+            // 鼠标事件（用于PC测试）
+            joystick.addEventListener('mousedown', (e) => {
+                input.joystick.active = true;
+                handleJoystickMove(e.clientX, e.clientY);
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (input.joystick.active) {
+                    handleJoystickMove(e.clientX, e.clientY);
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (input.joystick.active) {
+                    resetJoystick();
+                }
+            });
+        }
+        
+        // 更新游戏逻辑
+        function update() {
+            let moveX = 0, moveY = 0;
+            
+            // 键盘输入
+            if (input.keys['KeyW'] || input.keys['ArrowUp']) moveY -= 1;
+            if (input.keys['KeyS'] || input.keys['ArrowDown']) moveY += 1;
+            if (input.keys['KeyA'] || input.keys['ArrowLeft']) moveX -= 1;
+            if (input.keys['KeyD'] || input.keys['ArrowRight']) moveX += 1;
+            
+            // 鼠标输入
+            if (input.mouse.pressed) {
+                const dx = input.mouse.x - player.x;
+                const dy = input.mouse.y - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > 20) {
+                    moveX = dx / distance;
+                    moveY = dy / distance;
+                }
+            }
+            
+            // 触控输入
+            if (input.joystick.active) {
+                moveX = input.joystick.x;
+                moveY = input.joystick.y;
+            }
+            
+            // 标准化移动向量
+            const moveLength = Math.sqrt(moveX * moveX + moveY * moveY);
+            if (moveLength > 0) {
+                moveX /= moveLength;
+                moveY /= moveLength;
+            }
+            
+            // 应用移动
+            const speed = (input.keys['ShiftLeft'] || input.keys['ShiftRight']) ? 4 : 2;
+            player.vx += moveX * 0.5;
+            player.vy += moveY * 0.5;
+            
+            // 应用摩擦
+            player.vx *= 0.9;
+            player.vy *= 0.9;
+            
+            // 限制速度
+            const currentSpeed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+            if (currentSpeed > speed) {
+                player.vx = (player.vx / currentSpeed) * speed;
+                player.vy = (player.vy / currentSpeed) * speed;
+            }
+            
+            // 更新位置
+            player.x += player.vx;
+            player.y += player.vy;
+            
+            // 边界检测
+            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+            
+            // 添加轨迹点
+            if (showTrail && (Math.abs(player.vx) > 0.1 || Math.abs(player.vy) > 0.1)) {
+                player.trail.push({ x: player.x, y: player.y, alpha: 1 });
+                if (player.trail.length > 50) {
+                    player.trail.shift();
+                }
+            }
+            
+            // 更新轨迹透明度
+            player.trail.forEach(point => {
+                point.alpha *= 0.95;
+            });
+            player.trail = player.trail.filter(point => point.alpha > 0.1);
+            
+            // 更新UI
+            document.getElementById('playerX').textContent = Math.round(player.x);
+            document.getElementById('playerY').textContent = Math.round(player.y);
+            document.getElementById('playerSpeed').textContent = currentSpeed.toFixed(1);
+        }
+        
+        // 渲染
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制网格
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // 绘制轨迹
+            if (showTrail) {
+                player.trail.forEach((point, index) => {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${point.alpha * 0.5})`;
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+            
+            // 绘制玩家
+            const isAccelerating = input.keys['ShiftLeft'] || input.keys['ShiftRight'];
+            ctx.fillStyle = isAccelerating ? '#e74c3c' : '#3498db';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制方向指示
+            if (Math.abs(player.vx) > 0.1 || Math.abs(player.vy) > 0.1) {
+                const angle = Math.atan2(player.vy, player.vx);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(player.x, player.y);
+                ctx.lineTo(player.x + Math.cos(angle) * 25, player.y + Math.sin(angle) * 25);
+                ctx.stroke();
+            }
+        }
+        
+        // 控制函数
+        function resetPlayer() {
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            player.vx = 0;
+            player.vy = 0;
+            player.trail = [];
+        }
+        
+        function toggleTrail() {
+            showTrail = !showTrail;
+            if (!showTrail) {
+                player.trail = [];
+            }
+        }
+        
+        function clearCanvas() {
+            player.trail = [];
+        }
+        
+        // 游戏循环
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            detectDevice();
+            setupVirtualJoystick();
+            resetPlayer();
+            gameLoop();
+        });
+        
+        // 防止页面滚动
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+    </script>
+</body>
+</html>

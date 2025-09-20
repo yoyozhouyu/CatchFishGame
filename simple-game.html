@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>海底狩猎游戏 - 简化演示版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB, #4682B4, #191970);
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 300px;
+            z-index: 100;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 100;
+        }
+
+        .mobile-only {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-only {
+                display: block;
+            }
+            .pc-only {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="info-panel">
+            <h3>🌊 海底狩猎游戏 - 演示版</h3>
+            <p>这是一个简化的演示版本，展示基本的游戏机制：</p>
+            <ul>
+                <li>✅ 玩家移动控制</li>
+                <li>✅ 鱼枪射击系统</li>
+                <li>✅ 基础AI鱼类</li>
+                <li>✅ 简化物理系统</li>
+                <li>✅ 触控/键盘控制</li>
+            </ul>
+        </div>
+
+        <div class="controls pc-only">
+            <strong>PC控制:</strong> WASD移动 | 鼠标瞄准 | 左键射击 | Shift加速
+        </div>
+
+        <div class="controls mobile-only">
+            <strong>移动端:</strong> 点击屏幕移动和射击
+        </div>
+
+        <div class="status">
+            <div>FPS: <span id="fps">60</span></div>
+            <div>鱼类: <span id="fishCount">0</span></div>
+            <div>得分: <span id="score">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        // 简化版游戏引擎
+        class SimpleGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                
+                this.player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0 };
+                this.fishes = [];
+                this.harpoon = null;
+                this.particles = [];
+                this.score = 0;
+                
+                this.keys = {};
+                this.mouse = { x: 0, y: 0, pressed: false };
+                this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                
+                this.setupEvents();
+                this.createFishes();
+                this.gameLoop();
+            }
+            
+            setupCanvas() {
+                const container = document.getElementById('gameContainer');
+                const width = Math.min(container.clientWidth * 0.9, 400);
+                const height = Math.min(container.clientHeight * 0.9, 600);
+                
+                this.canvas.width = width;
+                this.canvas.height = height;
+                this.canvas.style.width = width + 'px';
+                this.canvas.style.height = height + 'px';
+                
+                this.player.x = width / 2;
+                this.player.y = height * 0.8;
+            }
+            
+            setupEvents() {
+                document.addEventListener('keydown', (e) => this.keys[e.code] = true);
+                document.addEventListener('keyup', (e) => this.keys[e.code] = false);
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.mouse.x = e.clientX - rect.left;
+                    this.mouse.y = e.clientY - rect.top;
+                });
+                
+                this.canvas.addEventListener('mousedown', () => this.shoot());
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const rect = this.canvas.getBoundingClientRect();
+                    const touch = e.touches[0];
+                    this.mouse.x = touch.clientX - rect.left;
+                    this.mouse.y = touch.clientY - rect.top;
+                    this.shoot();
+                });
+            }
+            
+            createFishes() {
+                for (let i = 0; i < 5; i++) {
+                    this.fishes.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height * 0.7,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        size: 10 + Math.random() * 10,
+                        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                        caught: false
+                    });
+                }
+            }
+            
+            shoot() {
+                if (this.harpoon) return;
+                
+                const dx = this.mouse.x - this.player.x;
+                const dy = this.mouse.y - this.player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                this.harpoon = {
+                    x: this.player.x,
+                    y: this.player.y,
+                    vx: (dx / distance) * 8,
+                    vy: (dy / distance) * 8,
+                    active: true
+                };
+            }
+            
+            update() {
+                // 更新玩家
+                let moveX = 0, moveY = 0;
+                if (this.keys['KeyW']) moveY -= 1;
+                if (this.keys['KeyS']) moveY += 1;
+                if (this.keys['KeyA']) moveX -= 1;
+                if (this.keys['KeyD']) moveX += 1;
+                
+                if (this.isMobile) {
+                    const dx = this.mouse.x - this.player.x;
+                    const dy = this.mouse.y - this.player.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance > 20) {
+                        moveX = dx / distance;
+                        moveY = dy / distance;
+                    }
+                }
+                
+                this.player.vx += moveX * 0.3;
+                this.player.vy += moveY * 0.3;
+                this.player.vx *= 0.9;
+                this.player.vy *= 0.9;
+                
+                this.player.x += this.player.vx;
+                this.player.y += this.player.vy;
+                
+                // 边界检测
+                this.player.x = Math.max(20, Math.min(this.canvas.width - 20, this.player.x));
+                this.player.y = Math.max(20, Math.min(this.canvas.height - 20, this.player.y));
+                
+                // 更新鱼枪
+                if (this.harpoon) {
+                    this.harpoon.x += this.harpoon.vx;
+                    this.harpoon.y += this.harpoon.vy;
+                    
+                    if (this.harpoon.x < 0 || this.harpoon.x > this.canvas.width ||
+                        this.harpoon.y < 0 || this.harpoon.y > this.canvas.height) {
+                        this.harpoon = null;
+                    }
+                    
+                    // 检测碰撞
+                    this.fishes.forEach(fish => {
+                        if (!fish.caught && this.harpoon) {
+                            const dx = this.harpoon.x - fish.x;
+                            const dy = this.harpoon.y - fish.y;
+                            if (Math.sqrt(dx * dx + dy * dy) < fish.size) {
+                                fish.caught = true;
+                                this.score += 10;
+                                this.harpoon = null;
+                                
+                                // 重新生成鱼
+                                setTimeout(() => {
+                                    fish.caught = false;
+                                    fish.x = Math.random() * this.canvas.width;
+                                    fish.y = Math.random() * this.canvas.height * 0.7;
+                                }, 2000);
+                            }
+                        }
+                    });
+                }
+                
+                // 更新鱼类
+                this.fishes.forEach(fish => {
+                    if (!fish.caught) {
+                        fish.x += fish.vx;
+                        fish.y += fish.vy;
+                        
+                        if (fish.x < 0 || fish.x > this.canvas.width) fish.vx *= -1;
+                        if (fish.y < 0 || fish.y > this.canvas.height * 0.8) fish.vy *= -1;
+                    }
+                });
+                
+                // 更新UI
+                document.getElementById('fishCount').textContent = this.fishes.filter(f => !f.caught).length;
+                document.getElementById('score').textContent = this.score;
+            }
+            
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 绘制玩家
+                this.ctx.fillStyle = '#4a90e2';
+                this.ctx.beginPath();
+                this.ctx.arc(this.player.x, this.player.y, 15, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // 绘制鱼类
+                this.fishes.forEach(fish => {
+                    if (!fish.caught) {
+                        this.ctx.fillStyle = fish.color;
+                        this.ctx.beginPath();
+                        this.ctx.arc(fish.x, fish.y, fish.size, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                });
+                
+                // 绘制鱼枪
+                if (this.harpoon) {
+                    this.ctx.strokeStyle = '#8b4513';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.player.x, this.player.y);
+                    this.ctx.lineTo(this.harpoon.x, this.harpoon.y);
+                    this.ctx.stroke();
+                    
+                    this.ctx.fillStyle = '#c0c0c0';
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.harpoon.x, this.harpoon.y, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                
+                // 绘制瞄准线
+                if (!this.harpoon) {
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.setLineDash([5, 5]);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.player.x, this.player.y);
+                    this.ctx.lineTo(this.mouse.x, this.mouse.y);
+                    this.ctx.stroke();
+                    this.ctx.setLineDash([]);
+                }
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+        
+        // 启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            new SimpleGame();
+        });
+    </script>
+</body>
+</html>

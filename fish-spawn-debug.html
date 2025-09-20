@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>鱼类出生位置调试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #4682B4 30%, #191970 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, 
+                rgba(135, 206, 235, 0.8) 0%,
+                rgba(70, 130, 180, 0.9) 20%,
+                rgba(25, 25, 112, 0.95) 50%,
+                rgba(0, 0, 139, 1) 100%);
+            border: 2px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .debug-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 100;
+            font-family: monospace;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-button {
+            background: rgba(76, 175, 80, 0.8);
+            border: 2px solid rgba(76, 175, 80, 1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .test-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-2px);
+        }
+
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .log-info {
+            background: rgba(33, 150, 243, 0.3);
+        }
+
+        .log-warn {
+            background: rgba(255, 152, 0, 0.3);
+        }
+
+        .log-error {
+            background: rgba(244, 67, 54, 0.3);
+        }
+
+        .log-success {
+            background: rgba(76, 175, 80, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <a href="demo.html" class="back-button">← 返回演示页面</a>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="debug-panel">
+            <h3>🐟 鱼类出生位置调试</h3>
+            <div style="margin: 10px 0;">
+                <button class="test-button" onclick="respawnAllFish()">重新生成所有鱼</button>
+                <button class="test-button" onclick="spawnSingleFish()">生成单条鱼</button>
+                <button class="test-button" onclick="toggleCollisionBoxes()">切换碰撞盒</button>
+                <button class="test-button" onclick="clearLog()">清除日志</button>
+            </div>
+            <div id="debugLog" style="max-height: 300px; overflow-y: auto;">
+                <div class="log-info">调试日志将显示在这里...</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <strong>调试模式:</strong> 观察鱼类出生位置 | 检查碰撞检测 | 查看调试日志
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        let game = null;
+        let originalConsoleLog = console.log;
+        let originalConsoleWarn = console.warn;
+        let originalConsoleError = console.error;
+
+        // 重写console方法以捕获日志
+        function setupConsoleCapture() {
+            console.log = function(...args) {
+                originalConsoleLog.apply(console, args);
+                addLogEntry(args.join(' '), 'info');
+            };
+
+            console.warn = function(...args) {
+                originalConsoleWarn.apply(console, args);
+                addLogEntry(args.join(' '), 'warn');
+            };
+
+            console.error = function(...args) {
+                originalConsoleError.apply(console, args);
+                addLogEntry(args.join(' '), 'error');
+            };
+        }
+
+        // 添加日志条目
+        function addLogEntry(message, type) {
+            const logDiv = document.getElementById('debugLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            
+            // 限制日志条目数量
+            while (logDiv.children.length > 100) {
+                logDiv.removeChild(logDiv.firstChild);
+            }
+            
+            // 滚动到底部
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // 等待页面加载完成后启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            setupConsoleCapture();
+            addLogEntry('开始初始化调试模式...', 'info');
+            
+            // 创建游戏实例
+            game = new UnderwaterHuntingGame();
+            
+            // 等待游戏初始化完成
+            setTimeout(() => {
+                if (game && game.settings) {
+                    game.settings.showCollisionBoxes = true;
+                    addLogEntry('碰撞盒显示已启用', 'success');
+                    
+                    // 显示初始状态
+                    addLogEntry(`障碍物数量: ${game.obstacles.length}`, 'info');
+                    addLogEntry(`鱼类数量: ${game.fishes.length}`, 'info');
+                    addLogEntry(`玩家位置: (${Math.round(game.player.x)}, ${Math.round(game.player.y)})`, 'info');
+                    
+                    // 检查鱼类是否在障碍物中
+                    checkFishInObstacles();
+                }
+            }, 3000);
+        });
+
+        // 检查鱼类是否在障碍物中
+        function checkFishInObstacles() {
+            if (!game) return;
+            
+            let fishInObstacles = 0;
+            
+            game.fishes.forEach((fish, index) => {
+                const collision = game.checkObstacleCollision(fish.x, fish.y, fish.radius);
+                if (collision) {
+                    fishInObstacles++;
+                    addLogEntry(`鱼类 ${index} (${fish.type}) 在障碍物中: ${collision.obstacleType}`, 'error');
+                } else {
+                    addLogEntry(`鱼类 ${index} (${fish.type}) 位置安全: (${Math.round(fish.x)}, ${Math.round(fish.y)})`, 'success');
+                }
+            });
+            
+            if (fishInObstacles > 0) {
+                addLogEntry(`警告: ${fishInObstacles} 条鱼在障碍物中!`, 'error');
+            } else {
+                addLogEntry('所有鱼类位置安全', 'success');
+            }
+        }
+
+        // 重新生成所有鱼类
+        function respawnAllFish() {
+            if (!game) return;
+            
+            addLogEntry('开始重新生成所有鱼类...', 'info');
+            game.fishes = [];
+            game.createFishes();
+            
+            setTimeout(() => {
+                checkFishInObstacles();
+            }, 100);
+        }
+
+        // 生成单条鱼
+        function spawnSingleFish() {
+            if (!game) return;
+            
+            const fishTypes = ['small', 'big', 'octopus'];
+            const type = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+            
+            let fishRadius;
+            switch (type) {
+                case 'small': fishRadius = 8; break;
+                case 'big': fishRadius = 20; break;
+                case 'octopus': fishRadius = 15; break;
+                default: fishRadius = 12;
+            }
+            
+            addLogEntry(`尝试生成单条 ${type} 鱼 (半径: ${fishRadius})...`, 'info');
+            
+            const spawnPosition = game.findSafeSpawnPositionForFish(
+                Math.random() * (game.gameWidth - 100) + 50,
+                Math.random() * (game.gameHeight * 0.7) + game.gameHeight * 0.1,
+                fishRadius,
+                100
+            );
+            
+            if (spawnPosition) {
+                const newFish = new Fish(spawnPosition.x, spawnPosition.y, type, game);
+                game.fishes.push(newFish);
+                addLogEntry(`成功生成 ${type} 鱼在位置 (${Math.round(spawnPosition.x)}, ${Math.round(spawnPosition.y)})`, 'success');
+                
+                // 验证新鱼的位置
+                setTimeout(() => {
+                    const collision = game.checkObstacleCollision(newFish.x, newFish.y, newFish.radius);
+                    if (collision) {
+                        addLogEntry(`新生成的鱼在障碍物中: ${collision.obstacleType}`, 'error');
+                    } else {
+                        addLogEntry('新生成的鱼位置安全', 'success');
+                    }
+                }, 50);
+            } else {
+                addLogEntry(`无法为 ${type} 鱼找到安全位置`, 'error');
+            }
+        }
+
+        // 切换碰撞盒显示
+        function toggleCollisionBoxes() {
+            if (!game) return;
+            
+            game.settings.showCollisionBoxes = !game.settings.showCollisionBoxes;
+            addLogEntry(`碰撞盒显示: ${game.settings.showCollisionBoxes ? '开启' : '关闭'}`, 'info');
+        }
+
+        // 清除日志
+        function clearLog() {
+            document.getElementById('debugLog').innerHTML = 
+                '<div class="log-info">日志已清除</div>';
+        }
+    </script>
+</body>
+</html>
