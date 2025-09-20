@@ -71,6 +71,7 @@ class UnderwaterHuntingGame {
         // 解锁提示状态
         this.unlockPrompt = null;
         this.unlockPromptCooldown = {}; // 解锁提示冷却时间
+        this.unlockInProgress = false; // 解锁操作进行中标志
 
         // 教程系统
         this.tutorial = {
@@ -777,6 +778,17 @@ class UnderwaterHuntingGame {
 
     // 检查水域解锁
     checkZoneUnlock(currentDepthPercent) {
+        // 如果解锁操作正在进行中，跳过检查
+        if (this.unlockInProgress) {
+            return;
+        }
+
+        // 确保zone1始终保持解锁状态
+        if (!this.waterZones.zone1.unlocked) {
+            console.log('⚠️ Zone1意外被锁定，自动解锁');
+            this.waterZones.zone1.unlocked = true;
+        }
+
         // 检查是否需要解锁zone2
         if (!this.waterZones.zone2.unlocked && currentDepthPercent >= this.waterZones.zone2.startDepth) {
             this.showUnlockPrompt('zone2');
@@ -794,9 +806,22 @@ class UnderwaterHuntingGame {
     showUnlockPrompt(zoneId) {
         console.log(`🌊 显示解锁提示: ${zoneId}`);
 
+        // zone1不应该显示解锁提示
+        if (zoneId === 'zone1') {
+            console.log('⚠️ Zone1不需要解锁，跳过提示');
+            return;
+        }
+
         // 防止重复显示
         if (this.unlockPrompt) {
             console.log('⚠️ 解锁提示已存在，跳过显示');
+            return;
+        }
+
+        // 检查区域是否已经解锁
+        const zone = this.waterZones[zoneId];
+        if (zone.unlocked) {
+            console.log(`⚠️ ${zoneId}已经解锁，跳过提示`);
             return;
         }
 
@@ -806,13 +831,12 @@ class UnderwaterHuntingGame {
 
         if (this.unlockPromptCooldown[zoneId] &&
             currentTime - this.unlockPromptCooldown[zoneId] < cooldownTime) {
+            console.log(`⚠️ ${zoneId}还在冷却中，跳过提示`);
             return; // 还在冷却中
         }
 
         // 记录提示时间
         this.unlockPromptCooldown[zoneId] = currentTime;
-
-        const zone = this.waterZones[zoneId];
 
         // 创建动态更新的提示界面
         this.createUnlockPrompt(zoneId, zone);
@@ -992,6 +1016,10 @@ class UnderwaterHuntingGame {
     // 解锁水域
     unlockZone(zoneId) {
         console.log(`=== 开始解锁水域 ${zoneId} ===`);
+
+        // 设置解锁进行中标志，防止重复触发
+        this.unlockInProgress = true;
+
         const zone = this.waterZones[zoneId];
         console.log(`水域信息:`, zone);
         console.log(`当前金币: ${this.coins}, 需要金币: ${zone.cost}`);
@@ -1024,6 +1052,13 @@ class UnderwaterHuntingGame {
 
         console.log(`关闭解锁提示界面...`);
         this.closeUnlockPrompt();
+
+        // 延迟重置解锁标志，给解锁操作一些时间完成
+        setTimeout(() => {
+            this.unlockInProgress = false;
+            console.log(`解锁操作标志已重置`);
+        }, 1000);
+
         console.log(`=== 解锁水域操作完成 ===`);
     }
 
@@ -1042,6 +1077,48 @@ class UnderwaterHuntingGame {
         } else {
             console.log('⚠️ 解锁提示界面不存在，无需关闭');
         }
+
+        // 重置解锁进行中标志（如果不是通过解锁操作关闭的）
+        if (this.unlockInProgress) {
+            setTimeout(() => {
+                this.unlockInProgress = false;
+                console.log('解锁操作标志已重置（通过关闭操作）');
+            }, 500);
+        }
+    }
+
+    // 强制清理游戏状态（复活时使用）
+    forceCleanGameState() {
+        console.log('🧹 强制清理游戏状态...');
+
+        // 清理鱼线和渔枪状态
+        this.fishingLine = null;
+        this.harpoon = null;
+
+        // 清理粒子系统中可能残留的玩家相关粒子
+        this.particles = this.particles.filter(particle =>
+            particle.type !== 'bubble' && particle.type !== 'repair'
+        );
+
+        // 清理浮动文字中可能残留的玩家相关文字
+        this.floatingTexts = this.floatingTexts.filter(text =>
+            !text.text.includes('救援') && !text.text.includes('复活')
+        );
+
+        // 重置输入状态
+        if (this.input) {
+            this.input.pulling = false;
+            if (this.input.mouse) {
+                this.input.mouse.pressed = false;
+            }
+            if (this.input.joystick) {
+                this.input.joystick.active = false;
+                this.input.joystick.x = 0;
+                this.input.joystick.y = 0;
+            }
+        }
+
+        console.log('✅ 游戏状态清理完成');
     }
 
     // 显示第一次中鱼提示
@@ -1397,8 +1474,10 @@ class UnderwaterHuntingGame {
         // 绘制鱼群
         this.fishes.forEach(fish => fish.render(this.ctx));
 
-        // 绘制玩家
-        this.player.render(this.ctx);
+        // 绘制玩家（昏迷状态下不渲染）
+        if (this.gameState !== 'unconscious' && this.player) {
+            this.player.render(this.ctx);
+        }
 
         // 绘制鱼枪
         if (this.harpoon) {
@@ -1629,9 +1708,14 @@ class UnderwaterHuntingGame {
 
     // 渲染氧气警告闪烁效果
     renderOxygenWarning() {
+        // 如果游戏不在进行状态或玩家不存在，不显示警告
+        if (this.gameState !== 'playing' || !this.player) {
+            return;
+        }
+
         const oxygenPercent = this.player.oxygen / this.player.maxOxygen;
 
-        // 只在氧气低于20%时显示警告
+        // 只在氧气低于50%时显示警告
         if (oxygenPercent > 0.5) {
             return;
         }
@@ -2282,15 +2366,34 @@ class UnderwaterHuntingGame {
             this.gameStats.unconsciousCount++;
             this.gameStats.totalRescueCost += rescueCost;
 
-            // 复活在水面附近 (调整为0.16)
-            this.player.x = this.gameWidth / 2;
-            this.player.y = this.gameHeight * 0.16; // 水面附近
-            this.player.vx = 0;
-            this.player.vy = 0;
+            // 保存旧玩家的属性
+            const oldPlayerStats = {
+                maxOxygen: this.player ? this.player.maxOxygen : 45,
+                maxStamina: this.player ? this.player.maxStamina : 100
+            };
 
-            // 完全恢复氧气和体力
+            // 完全清理旧玩家对象的引用
+            if (this.player) {
+                // 清理可能的事件监听器或定时器
+                this.player = null;
+            }
+
+            // 找到安全的复活位置
+            const reviveX = this.gameWidth / 2;
+            const reviveY = this.gameHeight * 0.16; // 水面附近
+            const playerRadius = 15; // 使用默认半径
+            const safePosition = this.findSafeSpawnPosition(reviveX, reviveY, playerRadius);
+
+            // 创建全新的玩家对象
+            this.player = new Player(safePosition.x, safePosition.y, this);
+
+            // 恢复玩家属性
+            this.player.maxOxygen = oldPlayerStats.maxOxygen;
+            this.player.maxStamina = oldPlayerStats.maxStamina;
             this.player.oxygen = this.player.maxOxygen;
             this.player.stamina = this.player.maxStamina;
+            this.player.vx = 0;
+            this.player.vy = 0;
 
             // 重置玩家状态
             this.player.isAtSurface = true; // 在水面
@@ -2298,12 +2401,8 @@ class UnderwaterHuntingGame {
             this.player.isPulling = false;
             this.player.lineReplenished = false;
 
-            // 重置游戏状态
-            this.gameState = 'playing';
-
-            // 清理鱼线和渔枪状态
-            this.fishingLine = null;
-            this.harpoon = null;
+            // 强制清理所有游戏状态
+            this.forceCleanGameState();
 
             // 清理所有鱼的被捕获状态
             this.fishes.forEach(fish => {
@@ -3035,8 +3134,8 @@ class Player {
         this.staminaRegenRate = 0.5;
         this.staminaConsumption = 2;
 
-        this.oxygen = 100;
-        this.maxOxygen = 100;
+        this.oxygen = 60;
+        this.maxOxygen = 60;
         this.oxygenConsumption = 0.1;
         this.oxygenRegenRate = 1;
 
@@ -3623,7 +3722,7 @@ class Fish {
         switch (this.type) {
             case 'small':
                 this.radius = 10;
-                this.maxSpeed = 2.5;
+                this.maxSpeed = 3;
                 this.maxHealth = 30;
                 this.maxStamina = 100; // 小鱼体力50
                 this.staminaConsumption = 0.8; // 体力消耗速度
@@ -3635,9 +3734,9 @@ class Fish {
                 break;
             case 'big':
                 this.radius = 20;
-                this.maxSpeed = 1.5;
+                this.maxSpeed = 2;
                 this.maxHealth = 100;
-                this.maxStamina = 150; // 大鱼体力100
+                this.maxStamina = 200; // 大鱼体力100
                 this.staminaConsumption = 1.2; // 体力消耗速度
                 this.fastSwimMultiplier = 2.5; // 快速游动倍数
                 this.escapeForce = 6;
@@ -3647,9 +3746,9 @@ class Fish {
                 break;
             case 'octopus':
                 this.radius = 15;
-                this.maxSpeed = 2;
+                this.maxSpeed = 2.5;
                 this.maxHealth = 70;
-                this.maxStamina = 120; // 章鱼体力75
+                this.maxStamina = 150; // 章鱼体力75
                 this.staminaConsumption = 1.0; // 体力消耗速度
                 this.fastSwimMultiplier = 2.5; // 快速游动倍数
                 this.escapeForce = 5;
