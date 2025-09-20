@@ -1096,14 +1096,16 @@ class UnderwaterHuntingGame {
         this.harpoon = null;
 
         // 清理粒子系统中可能残留的玩家相关粒子
-        this.particles = this.particles.filter(particle =>
-            particle.type !== 'bubble' && particle.type !== 'repair'
-        );
+        if (this.particles && Array.isArray(this.particles)) {
+            this.particles = this.particles.filter(particle =>
+                particle.type !== 'bubble' && particle.type !== 'repair'
+            );
+        } else {
+            this.particles = [];
+        }
 
-        // 清理浮动文字中可能残留的玩家相关文字
-        this.floatingTexts = this.floatingTexts.filter(text =>
-            !text.text.includes('救援') && !text.text.includes('复活')
-        );
+        // 清理粒子中可能残留的玩家相关浮动文字
+        // 浮动文字也存储在particles数组中，所以不需要单独的floatingTexts数组
 
         // 重置输入状态
         if (this.input) {
@@ -2303,6 +2305,20 @@ class UnderwaterHuntingGame {
                 console.log('开始复活操作...');
                 console.log(`复活操作前金币: ${this.coins}, 复活费用: ${rescueCost}`);
 
+                // 检查金币是否足够支付复活费用
+                if (this.coins < rescueCost) {
+                    console.log(`金币不足，无法复活！当前: ${this.coins}, 需要: ${rescueCost}`);
+
+                    // 移除昏迷界面
+                    if (document.body.contains(unconsciousScreen)) {
+                        document.body.removeChild(unconsciousScreen);
+                    }
+
+                    // 直接触发游戏结束
+                    this.triggerGameOver();
+                    return;
+                }
+
                 // 禁用按钮防止重复点击
                 reviveButton.disabled = true;
                 reviveButton.textContent = '复活中...';
@@ -2422,15 +2438,17 @@ class UnderwaterHuntingGame {
 
             console.log(`玩家已复活，扣除${rescueCost}金币，剩余金币：${this.coins}`);
 
-            // 检查金币是否足够支付最低复活费用（20金币）
-            // 只有当金币少于20时才触发游戏结束
-            if (this.coins < 20) {
-                console.log(`金币不足20，无法支付最低复活费用，触发游戏结束`);
+            // 检查复活后金币是否足够支付下次最低复活费用（20金币）
+            // 计算下次可能的最低复活费用
+            const nextMinRescueCost = Math.max(20, Math.min(50, Math.floor(this.coins * 0.2)));
+
+            if (this.coins < nextMinRescueCost) {
+                console.log(`复活后金币${this.coins}不足以支付下次最低复活费用${nextMinRescueCost}，触发游戏结束`);
                 setTimeout(() => {
                     this.triggerGameOver();
                 }, 1000); // 延迟1秒显示游戏结束界面
             } else {
-                console.log(`复活成功，剩余金币${this.coins}足够继续游戏`);
+                console.log(`复活成功，剩余金币${this.coins}足够继续游戏（下次最低复活费用：${nextMinRescueCost}）`);
             }
         } catch (error) {
             console.error('复活玩家时发生错误:', error);
@@ -2604,7 +2622,7 @@ class UnderwaterHuntingGame {
 
         // 重新生成鱼类
         this.fishes = [];
-        this.spawnFish();
+        this.createFishes();
 
         // 恢复游戏状态
         this.gameState = 'playing';
