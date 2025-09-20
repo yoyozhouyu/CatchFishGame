@@ -26,7 +26,7 @@ class UnderwaterHuntingGame {
         this.particles = [];
 
         // 游戏资源
-        this._coins = 125; // 初始金币（私有变量）
+        this._coins = 85; // 初始金币（私有变量）
 
         // 游戏统计
         this.gameStats = {
@@ -52,7 +52,7 @@ class UnderwaterHuntingGame {
             },
             zone2: {
                 unlocked: false,
-                cost: 150,
+                cost: 100,
                 startDepth: 0.5,
                 endDepth: 0.75,
                 name: '中水区域',
@@ -60,7 +60,7 @@ class UnderwaterHuntingGame {
             },
             zone3: {
                 unlocked: false,
-                cost: 300,
+                cost: 100,
                 startDepth: 0.75,
                 endDepth: 1.0,
                 name: '深水区域',
@@ -1077,7 +1077,7 @@ class UnderwaterHuntingGame {
         for (let i = 0; i < 6; i++) {
             const x = Math.random() * (this.gameWidth - 60) + 30;
             const y = this.gameHeight * 0.2 + Math.random() * (this.gameHeight * 0.15);
-            const size = 15 + Math.random() * 10;
+            const size = 10 + Math.random() * 10;
             this.obstacles.push(new Obstacle(
                 x,
                 y,
@@ -1106,7 +1106,7 @@ class UnderwaterHuntingGame {
         }
 
         // 中层（70-85%深度）- 较多岩石和海藻
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 8; i++) {
             const x = Math.random() * (this.gameWidth - 80) + 40;
             const y = this.gameHeight * 0.6 + Math.random() * (this.gameHeight * 0.15);
 
@@ -1138,15 +1138,15 @@ class UnderwaterHuntingGame {
             }
         }
 
-        // 深层（85-100%深度）- 大量障碍物
-        for (let i = 0; i < 12; i++) {
+        // 深层（85-100%深度）- 与中层大小一致的障碍物
+        for (let i = 0; i < 8; i++) {
             const x = Math.random() * (this.gameWidth - 80) + 40;
             const y = this.gameHeight * 0.85 + Math.random() * (this.gameHeight * 0.15);
 
-            if (Math.random() < 0.7) {
-                // 70%概率生成岩石（深层岩石更多更大）
-                const width = 30 + Math.random() * 25;
-                const height = 25 + Math.random() * 20;
+            if (Math.random() < 0.6) {
+                // 60%概率生成岩石（与中层大小一致）
+                const width = 25 + Math.random() * 20;
+                const height = 20 + Math.random() * 15;
                 this.obstacles.push(new Obstacle(
                     x,
                     y,
@@ -1157,8 +1157,8 @@ class UnderwaterHuntingGame {
                     this
                 ));
             } else {
-                // 30%概率生成大型海藻团
-                const size = 25 + Math.random() * 20;
+                // 40%概率生成海藻团（与中层大小一致）
+                const size = 20 + Math.random() * 15;
                 this.obstacles.push(new Obstacle(
                     x,
                     y,
@@ -1169,6 +1169,33 @@ class UnderwaterHuntingGame {
                     this
                 ));
             }
+        }
+
+        // 深层移动障碍物 - 2个缓慢移动的大型障碍物
+        for (let i = 0; i < 2; i++) {
+            const x = Math.random() * (this.gameWidth - 100) + 50;
+            const y = this.gameHeight * 0.85 + Math.random() * (this.gameHeight * 0.12);
+
+            // 创建移动障碍物（稍大一些）
+            const size = 30 + Math.random() * 15;
+            const movingObstacle = new Obstacle(
+                x,
+                y,
+                size,
+                size,
+                'circle',
+                'floating_seaweed',
+                this
+            );
+
+            // 添加移动属性
+            movingObstacle.isMoving = true;
+            movingObstacle.moveSpeed = 0.2 + Math.random() * 0.3; // 0.2-0.5的缓慢速度
+            movingObstacle.moveAngle = Math.random() * Math.PI * 2;
+            movingObstacle.moveTimer = 0;
+            movingObstacle.moveInterval = 180 + Math.random() * 240; // 3-7秒改变方向
+
+            this.obstacles.push(movingObstacle);
         }
 
         // 沉船残骸（放置在深层，符合沉船应该在海底的逻辑）
@@ -1282,6 +1309,9 @@ class UnderwaterHuntingGame {
 
         // 更新鱼群
         this.fishes.forEach(fish => fish.update());
+
+        // 更新障碍物（移动障碍物）
+        this.obstacles.forEach(obstacle => obstacle.update());
 
         // 更新鱼枪
         if (this.harpoon) {
@@ -2445,7 +2475,7 @@ class UnderwaterHuntingGame {
     // 重新开始游戏
     restartGame() {
         // 重置金币
-        this._coins = 125;
+        this._coins = 85;
 
         // 重置统计数据
         this.gameStats = {
@@ -2817,6 +2847,54 @@ class Obstacle {
         return false;
     }
 
+    // 更新障碍物（用于移动障碍物）
+    update() {
+        // 只有移动障碍物才需要更新
+        if (!this.isMoving) return;
+
+        this.moveTimer++;
+
+        // 定期改变移动方向
+        if (this.moveTimer >= this.moveInterval) {
+            this.moveTimer = 0;
+            this.moveAngle = Math.random() * Math.PI * 2;
+            this.moveInterval = 180 + Math.random() * 240; // 3-7秒
+        }
+
+        // 计算移动
+        const moveX = Math.cos(this.moveAngle) * this.moveSpeed;
+        const moveY = Math.sin(this.moveAngle) * this.moveSpeed;
+
+        // 更新位置
+        this.x += moveX;
+        this.y += moveY;
+
+        // 边界检测和反弹
+        const margin = Math.max(this.width, this.height) / 2;
+
+        if (this.x < margin) {
+            this.x = margin;
+            this.moveAngle = Math.PI - this.moveAngle; // 水平反弹
+        }
+        if (this.x > this.game.gameWidth - margin) {
+            this.x = this.game.gameWidth - margin;
+            this.moveAngle = Math.PI - this.moveAngle; // 水平反弹
+        }
+
+        // 限制在深层区域
+        const minY = this.game.gameHeight * 0.85;
+        const maxY = this.game.gameHeight - margin;
+
+        if (this.y < minY) {
+            this.y = minY;
+            this.moveAngle = -this.moveAngle; // 垂直反弹
+        }
+        if (this.y > maxY) {
+            this.y = maxY;
+            this.moveAngle = -this.moveAngle; // 垂直反弹
+        }
+    }
+
     // 渲染障碍物
     render(ctx) {
         if (!this.game || !this.game.imagesLoaded || !this.game.images || !this.game.images.obstacle) {
@@ -2830,22 +2908,22 @@ class Obstacle {
         // 使用障碍物图片
         const image = this.game.images.obstacle;
 
-        // 根据深度调整大小
+        // 根据深度调整大小，确保显示大小与碰撞体积匹配
         const depthPercent = this.y / this.game.gameHeight;
         let size;
 
         if (depthPercent <= 0.45) {
-            // 水面层 - 小尺寸
-            size = Math.max(this.width, this.height) * 0.8;
+            // 水面层 - 显示大小与碰撞体积一致
+            size = Math.max(this.width, this.height) * 1.8;
         } else if (depthPercent <= 0.7) {
-            // 中上层 - 中等尺寸
-            size = Math.max(this.width, this.height) * 1.0;
+            // 中上层 - 显示大小与碰撞体积一致
+            size = Math.max(this.width, this.height) * 2.0;
         } else if (depthPercent <= 0.85) {
-            // 中层 - 较大尺寸
-            size = Math.max(this.width, this.height) * 1.2;
+            // 中层 - 显示大小与碰撞体积一致
+            size = Math.max(this.width, this.height) * 2.2;
         } else {
-            // 深层 - 大尺寸
-            size = Math.max(this.width, this.height) * 1.5;
+            // 深层 - 显示大小与中层一致
+            size = Math.max(this.width, this.height) * 2.2;
         }
 
         // 绘制障碍物图片
@@ -3178,12 +3256,8 @@ class Player {
         // 检查与障碍物的碰撞
         const collidedObstacle = this.game.checkObstacleCollision(this.x, this.y, this.radius);
         if (collidedObstacle) {
-            // 恢复到旧位置
-            this.x = oldX;
-            this.y = oldY;
-
-            // 尝试沿着障碍物边缘滑动
-            this.slideAlongObstacle(collidedObstacle);
+            // 执行物理碰撞响应
+            this.handlePhysicalCollision(collidedObstacle, oldX, oldY);
         }
 
         // 边界检测
@@ -3199,7 +3273,8 @@ class Player {
         // 限制在水面以下 (水面位置已调整为0.15)
         const waterSurface = this.game.gameHeight * 0.15;
         if (this.y < waterSurface) {
-            this.y = waterSurface;
+            console.log(`玩家位置超出水面: y=${this.y}, waterSurface=${waterSurface}, gameHeight=${this.game.gameHeight}`);
+            this.y = Math.max(waterSurface, this.radius); // 确保不会小于玩家半径
             this.vy = 0;
         }
 
@@ -3230,31 +3305,135 @@ class Player {
         this.isAtSurface = this.y < this.game.gameHeight * 0.16;
     }
 
-    // 沿着障碍物边缘滑动
-    slideAlongObstacle(obstacle) {
-        // 尝试只在X方向移动
-        let testX = this.x + this.vx;
-        let testY = this.y;
+    // 旧的滑动方法已被新的物理碰撞系统替代
 
-        if (!this.game.checkObstacleCollision(testX, testY, this.radius)) {
-            this.x = testX;
-            this.vy *= 0.8; // 减少垂直速度
+    // 输入检测方法已移除，新的物理碰撞系统不需要这些方法
+
+    // 检查位置是否有效（在游戏边界内且不违反水域限制）
+    isPositionValid(x, y) {
+        // 检查基本边界
+        if (x < this.radius || x > this.game.gameWidth - this.radius) {
+            return false;
+        }
+
+        // 检查水面限制
+        const waterSurface = this.game.gameHeight * 0.15;
+        if (y < waterSurface) {
+            return false;
+        }
+
+        // 检查底部边界
+        if (y > this.game.gameHeight - this.radius) {
+            return false;
+        }
+
+        // 检查水域分层限制
+        const currentDepthPercent = y / this.game.gameHeight;
+        const maxAllowedDepth = this.game.getMaxUnlockedDepth();
+        if (currentDepthPercent > maxAllowedDepth) {
+            return false;
+        }
+
+        return true;
+    }
+
+    // 处理物理碰撞
+    handlePhysicalCollision(obstacle, oldX, oldY) {
+        // 计算碰撞向量
+        const dx = this.x - obstacle.x;
+        const dy = this.y - obstacle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance === 0) {
+            // 如果完全重叠，随机选择一个方向推开
+            const randomAngle = Math.random() * Math.PI * 2;
+            const pushDistance = this.radius + Math.max(obstacle.width, obstacle.height) / 2 + 5;
+            this.x = obstacle.x + Math.cos(randomAngle) * pushDistance;
+            this.y = obstacle.y + Math.sin(randomAngle) * pushDistance;
+            this.vx *= -0.5;
+            this.vy *= -0.5;
             return;
         }
 
-        // 尝试只在Y方向移动
-        testX = this.x;
-        testY = this.y + this.vy;
+        // 计算法向量（从障碍物中心指向玩家）
+        const normalX = dx / distance;
+        const normalY = dy / distance;
 
-        if (!this.game.checkObstacleCollision(testX, testY, this.radius)) {
-            this.y = testY;
-            this.vx *= 0.8; // 减少水平速度
+        // 计算穿透深度
+        let penetrationDepth;
+        if (obstacle.type === 'circle') {
+            penetrationDepth = (this.radius + obstacle.width) - distance;
+        } else {
+            // 对于矩形障碍物，计算到最近边的距离
+            const closestX = Math.max(obstacle.x - obstacle.width / 2,
+                             Math.min(this.x, obstacle.x + obstacle.width / 2));
+            const closestY = Math.max(obstacle.y - obstacle.height / 2,
+                             Math.min(this.y, obstacle.y + obstacle.height / 2));
+            const distanceToEdge = Math.sqrt(
+                Math.pow(this.x - closestX, 2) + Math.pow(this.y - closestY, 2)
+            );
+            penetrationDepth = this.radius - distanceToEdge;
+        }
+
+        // 如果有穿透，推出玩家
+        if (penetrationDepth > 0) {
+            const pushOutDistance = penetrationDepth + 2; // 额外2像素避免卡住
+            this.x += normalX * pushOutDistance;
+            this.y += normalY * pushOutDistance;
+
+            // 验证新位置是否安全
+            if (!this.isPositionValid(this.x, this.y)) {
+                // 如果推出后位置无效，恢复到旧位置
+                this.x = oldX;
+                this.y = oldY;
+                this.vx = 0;
+                this.vy = 0;
+                return;
+            }
+        }
+
+        // 计算速度在法向量上的投影
+        const velocityDotNormal = this.vx * normalX + this.vy * normalY;
+
+        // 如果玩家正在远离障碍物，不需要处理碰撞
+        if (velocityDotNormal >= 0) {
             return;
         }
 
-        // 如果都不行，就停止移动
-        this.vx *= 0.5;
-        this.vy *= 0.5;
+        // 计算反弹和滑动
+        const restitution = 0.3; // 弹性系数
+        const friction = 0.7; // 摩擦系数
+
+        // 分解速度为法向和切向分量
+        const normalVelocityX = velocityDotNormal * normalX;
+        const normalVelocityY = velocityDotNormal * normalY;
+        const tangentVelocityX = this.vx - normalVelocityX;
+        const tangentVelocityY = this.vy - normalVelocityY;
+
+        // 应用反弹（法向分量反向并减少）
+        const newNormalVelocityX = -normalVelocityX * restitution;
+        const newNormalVelocityY = -normalVelocityY * restitution;
+
+        // 应用摩擦（切向分量减少）
+        const newTangentVelocityX = tangentVelocityX * friction;
+        const newTangentVelocityY = tangentVelocityY * friction;
+
+        // 合成新的速度
+        this.vx = newNormalVelocityX + newTangentVelocityX;
+        this.vy = newNormalVelocityY + newTangentVelocityY;
+
+        // 添加一些随机性，让碰撞更自然
+        const randomFactor = 0.1;
+        this.vx += (Math.random() - 0.5) * randomFactor;
+        this.vy += (Math.random() - 0.5) * randomFactor;
+
+        // 限制速度，避免过度反弹
+        const maxBounceSpeed = this.maxSpeed * 0.8;
+        const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        if (currentSpeed > maxBounceSpeed) {
+            this.vx = (this.vx / currentSpeed) * maxBounceSpeed;
+            this.vy = (this.vy / currentSpeed) * maxBounceSpeed;
+        }
     }
 
     updateResources() {
